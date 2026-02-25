@@ -1,4 +1,4 @@
-import { Server, Box, Component, User, ExternalLink } from 'lucide-react';
+import { Server, Box, Component, User, ExternalLink, Link2 } from 'lucide-react';
 import useStore from '../store';
 
 const Toolbar = () => {
@@ -37,30 +37,33 @@ const Toolbar = () => {
       label: 'External System',
       color: 'bg-gray-100 hover:bg-gray-200 text-gray-700',
     },
+    {
+      type: 'shadow',
+      icon: Link2,
+      label: 'Shadow (Reference)',
+      color: 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-dashed',
+    },
   ];
 
   // Determine what element types are valid in current context
   const getValidElementTypes = () => {
     if (currentParentId === null) {
-      // Root view - can add systems, people, external systems
-      return ['system', 'person', 'externalSystem'];
+      // Root view - can add systems, people, external systems, shadows
+      return ['system', 'person', 'externalSystem', 'shadow'];
     }
 
     const parent = getElementById(currentParentId);
-    if (!parent) return ['system', 'person', 'externalSystem'];
+    if (!parent) return ['system', 'person', 'externalSystem', 'shadow'];
 
     switch (parent.type) {
       case 'system':
-        // Inside a system - can add containers
-        return ['container', 'person'];
+        return ['container', 'person', 'shadow'];
       case 'container':
-        // Inside a container - can add components
-        return ['component'];
+        return ['component', 'shadow'];
       case 'component':
-        // Inside a component - can add sub-components
-        return ['component'];
+        return ['component', 'shadow'];
       default:
-        return [];
+        return ['shadow'];
     }
   };
 
