@@ -56,6 +56,9 @@ const Toolbar = () => {
       case 'container':
         // Inside a container - can add components
         return ['component'];
+      case 'component':
+        // Inside a component - can add sub-components
+        return ['component'];
       default:
         return [];
     }
