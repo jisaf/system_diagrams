@@ -8,6 +8,7 @@ const getPropertyName = (type) => {
     'component': 'components',
     'person': 'people',
     'externalSystem': 'externalSystems',
+    'shadow': 'shadows',
   };
   return mapping[type] || `${type}s`;
 };
@@ -42,6 +43,7 @@ const useStore = create((set, get) => ({
   components: [],
   people: [],
   externalSystems: [],
+  shadows: [],
 
   // Relationships
   relationships: [],
@@ -168,6 +170,24 @@ const useStore = create((set, get) => ({
   // Count children of an element
   getChildCount: (elementId) => {
     return get().getChildren(elementId).length;
+  },
+
+  // Get the full path of an element (for search display)
+  getElementPath: (elementId) => {
+    const state = get();
+    const path = [];
+    let current = state.getElementById(elementId);
+
+    while (current) {
+      path.unshift(current.name || current.id);
+      if (current.parentId) {
+        current = state.getElementById(current.parentId);
+      } else {
+        break;
+      }
+    }
+
+    return path.join(' / ');
   },
 
   setSelectedElement: (element) => {
@@ -318,6 +338,7 @@ const useStore = create((set, get) => ({
       ...state.components,
       ...state.people,
       ...state.externalSystems,
+      ...state.shadows,
     ];
   },
 
@@ -335,6 +356,7 @@ const useStore = create((set, get) => ({
       components: [],
       people: [],
       externalSystems: [],
+      shadows: [],
       relationships: [],
       selectedElement: null,
       selectedEdge: null,
@@ -353,6 +375,7 @@ const useStore = create((set, get) => ({
       components: model.components || [],
       people: model.people || [],
       externalSystems: model.externalSystems || [],
+      shadows: model.shadows || [],
       relationships: model.relationships || [],
       currentParentId: null,
       navigationHistory: [],
@@ -371,6 +394,7 @@ const useStore = create((set, get) => ({
       components: state.components,
       people: state.people,
       externalSystems: state.externalSystems,
+      shadows: state.shadows,
       relationships: state.relationships,
     };
   },
