@@ -63,6 +63,7 @@ const sanitizeModel = (model) => {
     components: sanitizeArray(model.components, sanitizeElement),
     people: sanitizeArray(model.people, sanitizeElement),
     externalSystems: sanitizeArray(model.externalSystems, sanitizeElement),
+    shadows: (model.shadows || []).map(sanitizeElement),
     relationships: sanitizeArray(model.relationships, sanitizeRelationship),
   };
 };
