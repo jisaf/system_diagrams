@@ -11,7 +11,9 @@ const PropertiesPanel = () => {
     updateElement,
     deleteElement,
     updateRelationship,
-    deleteRelationship
+    deleteRelationship,
+    getAllElements,
+    getElementPath,
   } = useStore();
 
   const [formData, setFormData] = useState({
@@ -30,6 +32,10 @@ const PropertiesPanel = () => {
     arrowDirection: 'right',
     lineStyle: 'solid',
   });
+
+  const [targetSearch, setTargetSearch] = useState('');
+  const [showTargetPicker, setShowTargetPicker] = useState(false);
+  const [shadowTargetId, setShadowTargetId] = useState('');
 
   useEffect(() => {
     if (selectedElement && selectedElement.id) {
@@ -60,6 +66,12 @@ const PropertiesPanel = () => {
   }, [selectedElement?.id]); // Only reset form when element ID changes, not when element data changes
 
   useEffect(() => {
+    if (selectedElement && selectedElement.type === 'shadow') {
+      setShadowTargetId(selectedElement.targetId || '');
+    }
+  }, [selectedElement?.id, selectedElement?.type]);
+
+  useEffect(() => {
     if (selectedEdge && selectedEdge.id) {
       try {
         setEdgeFormData({
@@ -80,6 +92,19 @@ const PropertiesPanel = () => {
       }
     }
   }, [selectedEdge?.id]); // Only reset form when edge ID changes, not when edge data changes
+
+  useEffect(() => {
+    const handleClickOutside = () => setShowTargetPicker(false);
+    if (showTargetPicker) {
+      const timer = setTimeout(() => {
+        document.addEventListener('click', handleClickOutside);
+      }, 100);
+      return () => {
+        clearTimeout(timer);
+        document.removeEventListener('click', handleClickOutside);
+      };
+    }
+  }, [showTargetPicker]);
 
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -133,6 +158,17 @@ const PropertiesPanel = () => {
       setSelectedEdge(null);
     }
   };
+
+  // Get all elements except shadows for target picker
+  const allTargetableElements = getAllElements().filter(el => el.type !== 'shadow');
+
+  // Filter by search term (matches path)
+  const filteredElements = targetSearch
+    ? allTargetableElements.filter(el => {
+        const path = getElementPath(el.id).toLowerCase();
+        return path.includes(targetSearch.toLowerCase());
+      })
+    : allTargetableElements;
 
   // Show edge properties if edge is selected (and element is not selected)
   // This handles race conditions where both might be set temporarily
@@ -297,6 +333,83 @@ const PropertiesPanel = () => {
           </div>
         </div>
 
+        {/* Shadow Target Picker - only for shadow type */}
+        {selectedElement.type === 'shadow' && (
+          <div className="mb-4">
+            <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
+              Target Element
+            </label>
+
+            {/* Current target display */}
+            {shadowTargetId && (
+              <div className="mb-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded text-sm">
+                <div className="font-medium text-blue-900">
+                  {getAllElements().find(el => el.id === shadowTargetId)?.name || 'Unknown'}
+                </div>
+                <div className="text-xs text-blue-600">
+                  {getElementPath(shadowTargetId)}
+                </div>
+              </div>
+            )}
+
+            {/* Search input */}
+            <div className="relative">
+              <input
+                type="text"
+                value={targetSearch}
+                onChange={(e) => {
+                  setTargetSearch(e.target.value);
+                  setShowTargetPicker(true);
+                }}
+                onFocus={() => setShowTargetPicker(true)}
+                placeholder="Search elements by path..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+
+              {/* Dropdown */}
+              {showTargetPicker && (
+                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                  {filteredElements.length === 0 ? (
+                    <div className="px-3 py-2 text-sm text-gray-500">No elements found</div>
+                  ) : (
+                    filteredElements.slice(0, 20).map((el) => (
+                      <div
+                        key={el.id}
+                        onClick={() => {
+                          setShadowTargetId(el.id);
+                          setTargetSearch('');
+                          setShowTargetPicker(false);
+                          updateElement('shadow', selectedElement.id, { targetId: el.id });
+                        }}
+                        className={`px-3 py-2 cursor-pointer hover:bg-gray-100 ${
+                          el.id === shadowTargetId ? 'bg-blue-50' : ''
+                        }`}
+                      >
+                        <div className="text-sm font-medium">{el.name || el.id}</div>
+                        <div className="text-xs text-gray-500">{getElementPath(el.id)}</div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Manual ID input */}
+            <div className="mt-2">
+              <input
+                type="text"
+                value={shadowTargetId}
+                onChange={(e) => {
+                  setShadowTargetId(e.target.value);
+                  updateElement('shadow', selectedElement.id, { targetId: e.target.value });
+                }}
+                placeholder="Or paste element ID directly..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-xs font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+        )}
+
         {/* Element ID */}
         <div>
           <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
@@ -307,125 +420,129 @@ const PropertiesPanel = () => {
           </div>
         </div>
 
-        {/* Name */}
-        <div>
-          <label htmlFor="name" className="block text-xs font-semibold text-gray-600 uppercase mb-1">
-            Name
-          </label>
-          <input
-            id="name"
-            type="text"
-            value={formData.name}
-            onChange={(e) => handleInputChange('name', e.target.value)}
-            onBlur={handleSave}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Enter element name"
-          />
-        </div>
+        {selectedElement.type !== 'shadow' && (
+          <>
+            {/* Name */}
+            <div>
+              <label htmlFor="name" className="block text-xs font-semibold text-gray-600 uppercase mb-1">
+                Name
+              </label>
+              <input
+                id="name"
+                type="text"
+                value={formData.name}
+                onChange={(e) => handleInputChange('name', e.target.value)}
+                onBlur={handleSave}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter element name"
+              />
+            </div>
 
-        {/* Technology */}
-        <div>
-          <label htmlFor="technology" className="block text-xs font-semibold text-gray-600 uppercase mb-1">
-            Technology
-          </label>
-          <input
-            id="technology"
-            type="text"
-            value={formData.technology}
-            onChange={(e) => handleInputChange('technology', e.target.value)}
-            onBlur={handleSave}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="e.g., Spring Boot, React, PostgreSQL"
-          />
-        </div>
+            {/* Technology */}
+            <div>
+              <label htmlFor="technology" className="block text-xs font-semibold text-gray-600 uppercase mb-1">
+                Technology
+              </label>
+              <input
+                id="technology"
+                type="text"
+                value={formData.technology}
+                onChange={(e) => handleInputChange('technology', e.target.value)}
+                onBlur={handleSave}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="e.g., Spring Boot, React, PostgreSQL"
+              />
+            </div>
 
-        {/* Description */}
-        <div>
-          <label htmlFor="description" className="block text-xs font-semibold text-gray-600 uppercase mb-1">
-            Description
-          </label>
-          <textarea
-            id="description"
-            value={formData.description}
-            onChange={(e) => handleInputChange('description', e.target.value)}
-            onBlur={handleSave}
-            rows={4}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Describe the element's purpose and responsibilities"
-          />
-        </div>
+            {/* Description */}
+            <div>
+              <label htmlFor="description" className="block text-xs font-semibold text-gray-600 uppercase mb-1">
+                Description
+              </label>
+              <textarea
+                id="description"
+                value={formData.description}
+                onChange={(e) => handleInputChange('description', e.target.value)}
+                onBlur={handleSave}
+                rows={4}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Describe the element's purpose and responsibilities"
+              />
+            </div>
 
-        {/* Tags */}
-        <div>
-          <label htmlFor="tags" className="block text-xs font-semibold text-gray-600 uppercase mb-1">
-            Tags
-          </label>
-          <input
-            id="tags"
-            type="text"
-            value={formData.tags}
-            onChange={(e) => handleInputChange('tags', e.target.value)}
-            onBlur={handleSave}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="tag1, tag2, tag3"
-          />
-          <p className="text-xs text-gray-500 mt-1">Comma-separated values</p>
-        </div>
+            {/* Tags */}
+            <div>
+              <label htmlFor="tags" className="block text-xs font-semibold text-gray-600 uppercase mb-1">
+                Tags
+              </label>
+              <input
+                id="tags"
+                type="text"
+                value={formData.tags}
+                onChange={(e) => handleInputChange('tags', e.target.value)}
+                onBlur={handleSave}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="tag1, tag2, tag3"
+              />
+              <p className="text-xs text-gray-500 mt-1">Comma-separated values</p>
+            </div>
 
-        {/* Owners Section */}
-        <div className="pt-4 border-t border-gray-200">
-          <label className="block text-xs font-semibold text-gray-600 uppercase mb-2">
-            Owners
-          </label>
+            {/* Owners Section */}
+            <div className="pt-4 border-t border-gray-200">
+              <label className="block text-xs font-semibold text-gray-600 uppercase mb-2">
+                Owners
+              </label>
 
-          {/* PM Owner */}
-          <div className="mb-2">
-            <label htmlFor="ownerPM" className="block text-xs text-gray-500 mb-1">
-              PM
-            </label>
-            <input
-              id="ownerPM"
-              type="text"
-              value={formData.ownerPM}
-              onChange={(e) => handleInputChange('ownerPM', e.target.value)}
-              onBlur={handleSave}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Product Manager name"
-            />
-          </div>
+              {/* PM Owner */}
+              <div className="mb-2">
+                <label htmlFor="ownerPM" className="block text-xs text-gray-500 mb-1">
+                  PM
+                </label>
+                <input
+                  id="ownerPM"
+                  type="text"
+                  value={formData.ownerPM}
+                  onChange={(e) => handleInputChange('ownerPM', e.target.value)}
+                  onBlur={handleSave}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Product Manager name"
+                />
+              </div>
 
-          {/* UX Owner */}
-          <div className="mb-2">
-            <label htmlFor="ownerUX" className="block text-xs text-gray-500 mb-1">
-              UX
-            </label>
-            <input
-              id="ownerUX"
-              type="text"
-              value={formData.ownerUX}
-              onChange={(e) => handleInputChange('ownerUX', e.target.value)}
-              onBlur={handleSave}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="UX Designer name"
-            />
-          </div>
+              {/* UX Owner */}
+              <div className="mb-2">
+                <label htmlFor="ownerUX" className="block text-xs text-gray-500 mb-1">
+                  UX
+                </label>
+                <input
+                  id="ownerUX"
+                  type="text"
+                  value={formData.ownerUX}
+                  onChange={(e) => handleInputChange('ownerUX', e.target.value)}
+                  onBlur={handleSave}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="UX Designer name"
+                />
+              </div>
 
-          {/* Tech Owner */}
-          <div>
-            <label htmlFor="ownerTech" className="block text-xs text-gray-500 mb-1">
-              Tech
-            </label>
-            <input
-              id="ownerTech"
-              type="text"
-              value={formData.ownerTech}
-              onChange={(e) => handleInputChange('ownerTech', e.target.value)}
-              onBlur={handleSave}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Tech Lead name"
-            />
-          </div>
-        </div>
+              {/* Tech Owner */}
+              <div>
+                <label htmlFor="ownerTech" className="block text-xs text-gray-500 mb-1">
+                  Tech
+                </label>
+                <input
+                  id="ownerTech"
+                  type="text"
+                  value={formData.ownerTech}
+                  onChange={(e) => handleInputChange('ownerTech', e.target.value)}
+                  onBlur={handleSave}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Tech Lead name"
+                />
+              </div>
+            </div>
+          </>
+        )}
 
         {/* Position */}
         <div>
