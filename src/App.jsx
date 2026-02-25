@@ -13,6 +13,7 @@ import '@xyflow/react/dist/style.css';
 
 import useStore from './store';
 import C4Node from './components/C4Node';
+import ShadowNode from './components/ShadowNode';
 import Toolbar from './components/Toolbar';
 import PropertiesPanel from './components/PropertiesPanel';
 import Header from './components/Header';
@@ -20,6 +21,7 @@ import { useLocalStorage } from './hooks/useLocalStorage';
 
 const nodeTypes = {
   c4Node: C4Node,
+  shadowNode: ShadowNode,
 };
 
 // Calculate optimal handles based on node positions for shortest edge path
@@ -64,6 +66,7 @@ function App() {
     selectedElement,
     currentParentId,
     navigateInto,
+    navigateTo,
   } = useStore();
 
   const navigateUp = useStore((state) => state.navigateUp);
@@ -95,7 +98,7 @@ function App() {
     const elements = getVisibleElements();
     const newNodes = elements.map((el) => ({
       id: el.id,
-      type: 'c4Node',
+      type: el.type === 'shadow' ? 'shadowNode' : 'c4Node',
       position: el.position || { x: Math.random() * 400, y: Math.random() * 300 },
       data: {
         ...el,
@@ -274,14 +277,31 @@ function App() {
     (event, node) => {
       event.stopPropagation();
       const element = getAllElements().find((el) => el.id === node.id);
-      if (element) {
-        // Only navigate if element can have children (system or container)
-        if (element.type === 'system' || element.type === 'container') {
-          navigateInto(element.id);
+      if (!element) return;
+
+      // If it's a shadow, navigate to the target's parent context
+      if (element.type === 'shadow' && element.targetId) {
+        const target = getAllElements().find((el) => el.id === element.targetId);
+        if (target) {
+          // Navigate to where the target lives (its parent, or root if no parent)
+          const targetParentId = target.parentId || null;
+
+          // Use navigateTo if target has a parent, otherwise navigateToRoot
+          if (targetParentId) {
+            navigateTo(targetParentId);
+          } else {
+            navigateToRoot();
+          }
+          return;
         }
       }
+
+      // Normal behavior: navigate into the element
+      if (element.type === 'system' || element.type === 'container') {
+        navigateInto(element.id);
+      }
     },
-    [getAllElements, navigateInto]
+    [getAllElements, navigateInto, navigateTo, navigateToRoot]
   );
 
   // Handle edge click
