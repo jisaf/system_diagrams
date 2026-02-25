@@ -3,9 +3,46 @@ import { Handle, Position } from '@xyflow/react';
 import { User, Box, Component, Server, ExternalLink, Search } from 'lucide-react';
 import useStore from '../store';
 
+// Generate a consistent color from initials
+const getColorFromInitials = (initials) => {
+  if (!initials) return null;
+  let hash = 0;
+  for (let i = 0; i < initials.length; i++) {
+    hash = initials.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  // Generate HSL color with good saturation and lightness for badges
+  const hue = Math.abs(hash) % 360;
+  return {
+    bg: `hsl(${hue}, 70%, 90%)`,
+    text: `hsl(${hue}, 70%, 30%)`,
+    border: `hsl(${hue}, 70%, 70%)`,
+  };
+};
+
+// Get initials from a name (first letter of first two words)
+const getInitials = (name) => {
+  if (!name || typeof name !== 'string') return null;
+  const words = name.trim().split(/\s+/);
+  if (words.length === 1) {
+    return words[0].substring(0, 2).toUpperCase();
+  }
+  return (words[0][0] + words[1][0]).toUpperCase();
+};
+
 const C4Node = ({ data, selected }) => {
   const getChildCount = useStore((state) => state.getChildCount);
   const childCount = getChildCount(data.id);
+
+  // Get owner initials and colors
+  const ownerBadges = [
+    { label: 'PM', name: data.ownerPM },
+    { label: 'UX', name: data.ownerUX },
+    { label: 'T', name: data.ownerTech },
+  ].filter(o => o.name).map(o => ({
+    ...o,
+    initials: getInitials(o.name),
+    colors: getColorFromInitials(getInitials(o.name)),
+  }));
 
   const getNodeStyle = () => {
     const baseStyle = 'px-4 py-3 rounded-lg border-2 min-w-[200px] shadow-lg transition-all';
@@ -90,6 +127,27 @@ const C4Node = ({ data, selected }) => {
         </div>
       </div>
 
+      {/* Owner badges - bottom left */}
+      {ownerBadges.length > 0 && (
+        <div className="absolute bottom-2 left-2 flex items-center gap-1">
+          {ownerBadges.map((badge) => (
+            <div
+              key={badge.label}
+              className="px-1.5 py-0.5 rounded text-xs font-medium border"
+              style={{
+                backgroundColor: badge.colors.bg,
+                color: badge.colors.text,
+                borderColor: badge.colors.border,
+              }}
+              title={`${badge.label}: ${badge.name}`}
+            >
+              {badge.initials}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Child count - bottom right */}
       {childCount > 0 && (
         <div className="absolute bottom-2 right-2 flex items-center gap-1 text-xs text-gray-500 bg-white/80 px-1.5 py-0.5 rounded">
           <Search className="w-3 h-3" />

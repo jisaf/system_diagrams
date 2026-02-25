@@ -1,6 +1,6 @@
 # C4 Navigator
 
-A web-based C4 diagramming tool with IcePanel-style click-to-drill-down navigation. Built as a fork of BAC4 with enhanced hierarchical navigation capabilities.
+A web-based C4 diagramming tool with IcePanel-style click-to-drill-down navigation. Built as a fork of Diagrams with enhanced hierarchical navigation capabilities.
 
 ## Features
 

@@ -19,6 +19,9 @@ const PropertiesPanel = () => {
     description: '',
     technology: '',
     tags: '',
+    ownerPM: '',
+    ownerUX: '',
+    ownerTech: '',
   });
 
   const [edgeFormData, setEdgeFormData] = useState({
@@ -36,15 +39,21 @@ const PropertiesPanel = () => {
           description: selectedElement.description || '',
           technology: selectedElement.technology || '',
           tags: Array.isArray(selectedElement.tags) ? selectedElement.tags.join(', ') : '',
+          ownerPM: selectedElement.ownerPM || '',
+          ownerUX: selectedElement.ownerUX || '',
+          ownerTech: selectedElement.ownerTech || '',
         });
       } catch (error) {
-        console.error('[BAC4] Error setting formData for element:', error, selectedElement);
+        console.error('[Diagrams] Error setting formData for element:', error, selectedElement);
         // Set safe defaults on error
         setFormData({
           name: 'Error loading element',
           description: '',
           technology: '',
           tags: '',
+          ownerPM: '',
+          ownerUX: '',
+          ownerTech: '',
         });
       }
     }
@@ -60,7 +69,7 @@ const PropertiesPanel = () => {
           lineStyle: selectedEdge.lineStyle || 'solid',
         });
       } catch (error) {
-        console.error('[BAC4] Error setting edgeFormData:', error, selectedEdge);
+        console.error('[Diagrams] Error setting edgeFormData:', error, selectedEdge);
         // Set safe defaults on error
         setEdgeFormData({
           description: 'Error loading relationship',
@@ -87,6 +96,9 @@ const PropertiesPanel = () => {
         description: formData.description,
         technology: formData.technology,
         tags: formData.tags.split(',').map((tag) => tag.trim()).filter(Boolean),
+        ownerPM: formData.ownerPM,
+        ownerUX: formData.ownerUX,
+        ownerTech: formData.ownerTech,
       };
       updateElement(selectedElement.type, selectedElement.id, updates);
     }
@@ -244,7 +256,7 @@ const PropertiesPanel = () => {
 
   // Validate selectedElement has minimum required properties
   if (!selectedElement.id || !selectedElement.type) {
-    console.error('[BAC4] Invalid selectedElement:', selectedElement);
+    console.error('[Diagrams] Invalid selectedElement:', selectedElement);
     return (
       <aside className="w-80 bg-white border-l border-gray-200 p-4">
         <div className="text-center text-red-500 mt-8">
@@ -358,6 +370,61 @@ const PropertiesPanel = () => {
             placeholder="tag1, tag2, tag3"
           />
           <p className="text-xs text-gray-500 mt-1">Comma-separated values</p>
+        </div>
+
+        {/* Owners Section */}
+        <div className="pt-4 border-t border-gray-200">
+          <label className="block text-xs font-semibold text-gray-600 uppercase mb-2">
+            Owners
+          </label>
+
+          {/* PM Owner */}
+          <div className="mb-2">
+            <label htmlFor="ownerPM" className="block text-xs text-gray-500 mb-1">
+              PM
+            </label>
+            <input
+              id="ownerPM"
+              type="text"
+              value={formData.ownerPM}
+              onChange={(e) => handleInputChange('ownerPM', e.target.value)}
+              onBlur={handleSave}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Product Manager name"
+            />
+          </div>
+
+          {/* UX Owner */}
+          <div className="mb-2">
+            <label htmlFor="ownerUX" className="block text-xs text-gray-500 mb-1">
+              UX
+            </label>
+            <input
+              id="ownerUX"
+              type="text"
+              value={formData.ownerUX}
+              onChange={(e) => handleInputChange('ownerUX', e.target.value)}
+              onBlur={handleSave}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="UX Designer name"
+            />
+          </div>
+
+          {/* Tech Owner */}
+          <div>
+            <label htmlFor="ownerTech" className="block text-xs text-gray-500 mb-1">
+              Tech
+            </label>
+            <input
+              id="ownerTech"
+              type="text"
+              value={formData.ownerTech}
+              onChange={(e) => handleInputChange('ownerTech', e.target.value)}
+              onBlur={handleSave}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Tech Lead name"
+            />
+          </div>
         </div>
 
         {/* Position */}

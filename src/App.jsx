@@ -255,14 +255,14 @@ function App() {
       try {
         const element = getAllElements().find((el) => el.id === node.id);
         if (element) {
-          console.log('[BAC4] Node clicked:', element.type, element.id);
+          console.log('[Diagrams] Node clicked:', element.type, element.id);
           setSelectedElement(element);
         } else {
-          console.error('[BAC4] Element not found for node:', node.id);
+          console.error('[Diagrams] Element not found for node:', node.id);
           setSelectedElement(null);
         }
       } catch (error) {
-        console.error('[BAC4] Error in onNodeClick:', error);
+        console.error('[Diagrams] Error in onNodeClick:', error);
         setSelectedElement(null);
       }
     },

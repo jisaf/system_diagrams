@@ -1,5 +1,5 @@
 /**
- * Utilities for converting between BAC4 format and Structurizr JSON format
+ * Utilities for converting between Diagrams format and Structurizr JSON format
  *
  * Structurizr uses a hierarchical model structure:
  * - Workspace (top level)
@@ -12,20 +12,20 @@
  */
 
 /**
- * Export BAC4 model to Structurizr JSON format
- * @param {Object} model - BAC4 model object
+ * Export Diagrams model to Structurizr JSON format
+ * @param {Object} model - Diagrams model object
  * @returns {Object} Structurizr workspace JSON
  */
 export const exportToStructurizr = (model) => {
   // Generate IDs for Structurizr (using simple incremental numbers)
   let idCounter = 1;
-  const idMap = new Map(); // Map BAC4 IDs to Structurizr IDs
+  const idMap = new Map(); // Map Diagrams IDs to Structurizr IDs
 
-  const getStructurizrId = (bac4Id) => {
-    if (!idMap.has(bac4Id)) {
-      idMap.set(bac4Id, String(idCounter++));
+  const getStructurizrId = (diagramsId) => {
+    if (!idMap.has(diagramsId)) {
+      idMap.set(diagramsId, String(idCounter++));
     }
-    return idMap.get(bac4Id);
+    return idMap.get(diagramsId);
   };
 
   // Convert people
@@ -314,7 +314,7 @@ export const exportToStructurizr = (model) => {
   const workspace = {
     id: 1,
     name: model.metadata?.name || 'Architecture Model',
-    description: `Exported from BAC4 on ${new Date().toISOString()}`,
+    description: `Exported from Diagrams on ${new Date().toISOString()}`,
     version: model.metadata?.version || '1.0',
     model: {
       people,
@@ -323,7 +323,7 @@ export const exportToStructurizr = (model) => {
     views,
     documentation: {},
     properties: {
-      exportedFrom: 'BAC4',
+      exportedFrom: 'Diagrams',
       author: model.metadata?.author || ''
     }
   };
@@ -332,9 +332,9 @@ export const exportToStructurizr = (model) => {
 };
 
 /**
- * Import Structurizr JSON format to BAC4 model
+ * Import Structurizr JSON format to Diagrams model
  * @param {Object} workspace - Structurizr workspace JSON
- * @returns {Object} BAC4 model object
+ * @returns {Object} Diagrams model object
  */
 export const importFromStructurizr = (workspace) => {
   const model = {
@@ -375,22 +375,22 @@ export const importFromStructurizr = (workspace) => {
     return positionMap.get(id) || { x: 100, y: 100 };
   };
 
-  // Helper to generate BAC4-style ID
-  const generateBac4Id = (type, structurizrId) => {
+  // Helper to generate Diagrams-style ID
+  const generateDiagramsId = (type, structurizrId) => {
     return `${type}-${Date.now()}-${structurizrId}-${Math.random().toString(36).substr(2, 5)}`;
   };
 
-  // Map to track Structurizr ID to BAC4 ID conversion
+  // Map to track Structurizr ID to Diagrams ID conversion
   const idMap = new Map();
 
   // Convert people
   (workspace.model?.people || []).forEach(person => {
-    const bac4Id = generateBac4Id('person', person.id);
-    idMap.set(person.id, bac4Id);
+    const diagramsId = generateDiagramsId('person', person.id);
+    idMap.set(person.id, diagramsId);
 
     const position = getPosition(person.id);
     model.people.push({
-      id: bac4Id,
+      id: diagramsId,
       type: 'person',
       name: person.name,
       description: person.description || '',
@@ -405,12 +405,12 @@ export const importFromStructurizr = (workspace) => {
     const isExternal = system.location === 'External' ||
                        (system.tags && system.tags.includes('External'));
 
-    const bac4Id = generateBac4Id(isExternal ? 'externalSystem' : 'system', system.id);
-    idMap.set(system.id, bac4Id);
+    const diagramsId = generateDiagramsId(isExternal ? 'externalSystem' : 'system', system.id);
+    idMap.set(system.id, diagramsId);
 
     const position = getPosition(system.id);
     const systemObj = {
-      id: bac4Id,
+      id: diagramsId,
       type: isExternal ? 'externalSystem' : 'system',
       name: system.name,
       description: system.description || '',
@@ -429,48 +429,48 @@ export const importFromStructurizr = (workspace) => {
 
     // Convert containers within this system
     (system.containers || []).forEach(container => {
-      const containerBac4Id = generateBac4Id('container', container.id);
-      idMap.set(container.id, containerBac4Id);
+      const containerDiagramsId = generateDiagramsId('container', container.id);
+      idMap.set(container.id, containerDiagramsId);
 
       const containerPosition = getPosition(container.id);
       model.containers.push({
-        id: containerBac4Id,
+        id: containerDiagramsId,
         type: 'container',
         name: container.name,
         description: container.description || '',
         technology: container.technology || '',
         tags: container.tags ? container.tags.split(',').map(t => t.trim()).filter(t => t !== 'Container') : [],
         position: containerPosition,
-        parentSystem: bac4Id
+        parentSystem: diagramsId
       });
 
       // Convert components within this container
       (container.components || []).forEach(component => {
-        const componentBac4Id = generateBac4Id('component', component.id);
-        idMap.set(component.id, componentBac4Id);
+        const componentDiagramsId = generateDiagramsId('component', component.id);
+        idMap.set(component.id, componentDiagramsId);
 
         const componentPosition = getPosition(component.id);
         model.components.push({
-          id: componentBac4Id,
+          id: componentDiagramsId,
           type: 'component',
           name: component.name,
           description: component.description || '',
           technology: component.technology || '',
           tags: component.tags ? component.tags.split(',').map(t => t.trim()).filter(t => t !== 'Component') : [],
           position: componentPosition,
-          parentContainer: containerBac4Id
+          parentContainer: containerDiagramsId
         });
 
         // Convert component relationships
         (component.relationships || []).forEach(rel => {
-          const fromBac4Id = idMap.get(rel.sourceId);
-          const toBac4Id = idMap.get(rel.destinationId);
+          const fromDiagramsId = idMap.get(rel.sourceId);
+          const toDiagramsId = idMap.get(rel.destinationId);
 
-          if (fromBac4Id && toBac4Id) {
+          if (fromDiagramsId && toDiagramsId) {
             model.relationships.push({
               id: `rel-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-              from: fromBac4Id,
-              to: toBac4Id,
+              from: fromDiagramsId,
+              to: toDiagramsId,
               description: rel.description || '',
               technology: rel.technology || '',
               arrowDirection: 'right',
@@ -483,14 +483,14 @@ export const importFromStructurizr = (workspace) => {
 
       // Convert container relationships
       (container.relationships || []).forEach(rel => {
-        const fromBac4Id = idMap.get(rel.sourceId);
-        const toBac4Id = idMap.get(rel.destinationId);
+        const fromDiagramsId = idMap.get(rel.sourceId);
+        const toDiagramsId = idMap.get(rel.destinationId);
 
-        if (fromBac4Id && toBac4Id) {
+        if (fromDiagramsId && toDiagramsId) {
           model.relationships.push({
             id: `rel-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            from: fromBac4Id,
-            to: toBac4Id,
+            from: fromDiagramsId,
+            to: toDiagramsId,
             description: rel.description || '',
             technology: rel.technology || '',
             arrowDirection: 'right',
@@ -503,14 +503,14 @@ export const importFromStructurizr = (workspace) => {
 
     // Convert system relationships
     (system.relationships || []).forEach(rel => {
-      const fromBac4Id = idMap.get(rel.sourceId);
-      const toBac4Id = idMap.get(rel.destinationId);
+      const fromDiagramsId = idMap.get(rel.sourceId);
+      const toDiagramsId = idMap.get(rel.destinationId);
 
-      if (fromBac4Id && toBac4Id) {
+      if (fromDiagramsId && toDiagramsId) {
         model.relationships.push({
           id: `rel-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          from: fromBac4Id,
-          to: toBac4Id,
+          from: fromDiagramsId,
+          to: toDiagramsId,
           description: rel.description || '',
           technology: rel.technology || '',
           arrowDirection: 'right',
@@ -524,14 +524,14 @@ export const importFromStructurizr = (workspace) => {
   // Convert person relationships
   (workspace.model?.people || []).forEach(person => {
     (person.relationships || []).forEach(rel => {
-      const fromBac4Id = idMap.get(rel.sourceId);
-      const toBac4Id = idMap.get(rel.destinationId);
+      const fromDiagramsId = idMap.get(rel.sourceId);
+      const toDiagramsId = idMap.get(rel.destinationId);
 
-      if (fromBac4Id && toBac4Id) {
+      if (fromDiagramsId && toDiagramsId) {
         model.relationships.push({
           id: `rel-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          from: fromBac4Id,
-          to: toBac4Id,
+          from: fromDiagramsId,
+          to: toDiagramsId,
           description: rel.description || '',
           technology: rel.technology || '',
           arrowDirection: 'right',

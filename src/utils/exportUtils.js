@@ -470,7 +470,7 @@ export const generateDrawio = (model) => {
 
   // Build XML
   let xml = `<?xml version="1.0" encoding="UTF-8"?>
-<mxfile host="BAC4" modified="${timestamp}" agent="BAC4 C4 Modelling Tool" version="1.0" type="device">
+<mxfile host="Diagrams" modified="${timestamp}" agent="Diagrams C4 Modelling Tool" version="1.0" type="device">
   <diagram name="${escapeXml(model.metadata?.name || 'C4 Diagram')}" id="${diagramId}">
     <mxGraphModel dx="0" dy="0" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="${pageWidth}" pageHeight="${pageHeight}" background="#ffffff" math="0" shadow="0">
       <root>

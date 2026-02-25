@@ -65,14 +65,14 @@ const Header = () => {
         try {
           const data = JSON.parse(e.target.result);
 
-          // Detect if this is a Structurizr workspace or BAC4 model
+          // Detect if this is a Structurizr workspace or native model
           if (data.model && (data.views || data.documentation)) {
             // This looks like a Structurizr workspace
-            const bac4Model = importFromStructurizr(data);
-            importModel(bac4Model);
+            const nativeModel = importFromStructurizr(data);
+            importModel(nativeModel);
             alert('Structurizr workspace imported successfully!');
           } else {
-            // This is a BAC4 model
+            // This is a native model
             importModel(data);
             alert('Model imported successfully!');
           }
@@ -208,7 +208,7 @@ const Header = () => {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <h1 className="text-xl font-bold text-gray-900">
-            BAC4 Modelling Tool
+            Diagrams
           </h1>
           <span className="text-gray-400">|</span>
           {isEditingTitle ? (
@@ -281,7 +281,7 @@ const Header = () => {
                       className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center gap-2"
                     >
                       <FileJson className="w-4 h-4" />
-                      JSON (BAC4)
+                      JSON
                     </button>
                     <button
                       onClick={handleExportStructurizr}

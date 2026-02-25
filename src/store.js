@@ -173,7 +173,7 @@ const useStore = create((set, get) => ({
   setSelectedElement: (element) => {
     const state = get();
     if (state.debugMode) {
-      console.log('[BAC4 Debug] setSelectedElement called:', element ? { id: element.id, type: element.type } : null);
+      console.log('[Diagrams Debug] setSelectedElement called:', element ? { id: element.id, type: element.type } : null);
     }
     set({ selectedElement: element, selectedEdge: null });
   },
@@ -181,7 +181,7 @@ const useStore = create((set, get) => ({
   setSelectedEdge: (edge) => {
     const state = get();
     if (state.debugMode) {
-      console.log('[BAC4 Debug] setSelectedEdge called:', edge ? { id: edge.id } : null);
+      console.log('[Diagrams Debug] setSelectedEdge called:', edge ? { id: edge.id } : null);
     }
     set({ selectedEdge: edge, selectedElement: null });
   },
@@ -208,7 +208,7 @@ const useStore = create((set, get) => ({
   updateElement: (type, id, updates) => {
     const state = get();
     if (state.debugMode) {
-      console.log('[BAC4 Debug] updateElement called:', { type, id, updates });
+      console.log('[Diagrams Debug] updateElement called:', { type, id, updates });
     }
 
     const propertyName = getPropertyName(type);
@@ -222,7 +222,7 @@ const useStore = create((set, get) => ({
       const newSelectedElement = state.selectedElement?.id === id ? updatedElement : state.selectedElement;
 
       if (state.debugMode && updatedElement) {
-        console.log('[BAC4 Debug] Element updated:', updatedElement);
+        console.log('[Diagrams Debug] Element updated:', updatedElement);
       }
 
       return {
@@ -279,7 +279,7 @@ const useStore = create((set, get) => ({
   updateRelationship: (id, updates) => {
     const state = get();
     if (state.debugMode) {
-      console.log('[BAC4 Debug] updateRelationship called:', { id, updates });
+      console.log('[Diagrams Debug] updateRelationship called:', { id, updates });
     }
 
     set((state) => {
@@ -292,7 +292,7 @@ const useStore = create((set, get) => ({
       const newSelectedEdge = state.selectedEdge?.id === id ? updatedRelationship : state.selectedEdge;
 
       if (state.debugMode && updatedRelationship) {
-        console.log('[BAC4 Debug] Relationship updated:', updatedRelationship);
+        console.log('[Diagrams Debug] Relationship updated:', updatedRelationship);
       }
 
       return {
