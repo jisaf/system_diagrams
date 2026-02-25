@@ -6,6 +6,7 @@ import { exportAsPNG, exportAsSVG, generatePlantUML, generateMermaid, generateMa
 import { applyHierarchicalLayout, applyGridLayout, applyCircularLayout, applyForceLayout } from '../utils/layoutUtils';
 import { exportToStructurizr, importFromStructurizr } from '../utils/structurizrUtils';
 import { generateShareUrl } from '../utils/shareUtils';
+import ModelSelector from './ModelSelector';
 
 const Header = () => {
   const { metadata, setMetadata, exportModel, importModel, clearAll, getAllElements, updateElement, relationships } = useStore();
@@ -237,6 +238,9 @@ const Header = () => {
 
           {/* Share/Export/Import Buttons */}
           <div className="flex items-center gap-2">
+            {/* Cloud Models */}
+            <ModelSelector />
+
             {/* Share Button */}
             <button
               onClick={handleShare}
