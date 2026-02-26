@@ -3,9 +3,45 @@ import { Handle, Position } from '@xyflow/react';
 import { User, Box, Component, Server, ExternalLink, ExternalLinkIcon } from 'lucide-react';
 import useStore from '../store';
 
+// Generate a consistent color from initials
+const getColorFromInitials = (initials) => {
+  if (!initials) return null;
+  let hash = 0;
+  for (let i = 0; i < initials.length; i++) {
+    hash = initials.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const hue = Math.abs(hash) % 360;
+  return {
+    bg: `hsl(${hue}, 70%, 90%)`,
+    text: `hsl(${hue}, 70%, 30%)`,
+    border: `hsl(${hue}, 70%, 70%)`,
+  };
+};
+
+// Get initials from a name
+const getInitials = (name) => {
+  if (!name || typeof name !== 'string') return null;
+  const words = name.trim().split(/\s+/);
+  if (words.length === 1) {
+    return words[0].substring(0, 2).toUpperCase();
+  }
+  return (words[0][0] + words[1][0]).toUpperCase();
+};
+
 const TreeViewNode = ({ data }) => {
   const setViewMode = useStore((state) => state.setViewMode);
   const navigateTo = useStore((state) => state.navigateTo);
+
+  // Get owner badges
+  const ownerBadges = [
+    { label: 'PM', name: data.ownerPM },
+    { label: 'UX', name: data.ownerUX },
+    { label: 'T', name: data.ownerTech },
+  ].filter(o => o.name).map(o => ({
+    ...o,
+    initials: getInitials(o.name),
+    colors: getColorFromInitials(getInitials(o.name)),
+  }));
 
   const getIcon = () => {
     const iconClass = 'w-4 h-4';
@@ -79,12 +115,34 @@ const TreeViewNode = ({ data }) => {
         {/* Go to element button */}
         <button
           onClick={handleGoToElement}
-          className="p-1 hover:bg-white/50 rounded transition-colors"
+          onMouseDown={(e) => e.stopPropagation()}
+          className="nodrag p-1 hover:bg-white/50 rounded transition-colors cursor-pointer"
           title="Go to this element in edit mode"
         >
           <ExternalLinkIcon className="w-3 h-3 text-gray-400 hover:text-blue-500" />
         </button>
       </div>
+
+      {/* Owner badges */}
+      {ownerBadges.length > 0 && (
+        <div className="flex gap-1 mt-1 flex-wrap">
+          {ownerBadges.map((badge) => (
+            <span
+              key={badge.label}
+              className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[9px] font-medium border"
+              style={{
+                backgroundColor: badge.colors?.bg || '#f3f4f6',
+                color: badge.colors?.text || '#374151',
+                borderColor: badge.colors?.border || '#d1d5db',
+              }}
+              title={`${badge.label}: ${badge.name}`}
+            >
+              <span className="opacity-60">{badge.label}</span>
+              <span>{badge.initials}</span>
+            </span>
+          ))}
+        </div>
+      )}
 
       <Handle
         type="source"

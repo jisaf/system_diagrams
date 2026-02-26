@@ -33,25 +33,57 @@ const buildTreeLayout = (elements) => {
   const edges = [];
 
   const NODE_WIDTH = 180;
-  const NODE_HEIGHT = 60;
-  const HORIZONTAL_SPACING = 220;
+  const NODE_HEIGHT = 70;
+  const HORIZONTAL_GAP = 20;
   const VERTICAL_SPACING = 100;
+  const GRID_COLUMNS = 3; // Max columns in grid layout
 
-  // Calculate subtree width recursively
+  // Calculate grid dimensions for children
+  const getGridDimensions = (numChildren) => {
+    if (numChildren === 0) return { cols: 0, rows: 0 };
+    const cols = Math.min(numChildren, GRID_COLUMNS);
+    const rows = Math.ceil(numChildren / cols);
+    return { cols, rows };
+  };
+
+  // Calculate subtree width recursively (now with grid layout)
   const getSubtreeWidth = (elementId) => {
     const children = childrenMap.get(elementId) || [];
     if (children.length === 0) return NODE_WIDTH;
 
-    let totalWidth = 0;
-    children.forEach((child, index) => {
-      if (index > 0) totalWidth += 40; // gap between siblings
-      totalWidth += getSubtreeWidth(child.id);
+    // Calculate width based on grid layout for direct children
+    const { cols } = getGridDimensions(children.length);
+    const directChildrenWidth = cols * NODE_WIDTH + (cols - 1) * HORIZONTAL_GAP;
+
+    // Also need to consider grandchildren
+    let maxChildSubtreeWidth = 0;
+    children.forEach((child) => {
+      const childWidth = getSubtreeWidth(child.id);
+      maxChildSubtreeWidth = Math.max(maxChildSubtreeWidth, childWidth);
     });
 
-    return Math.max(NODE_WIDTH, totalWidth);
+    return Math.max(NODE_WIDTH, directChildrenWidth, maxChildSubtreeWidth);
   };
 
-  // Position nodes recursively
+  // Calculate subtree height (needed for proper vertical spacing)
+  const getSubtreeHeight = (elementId) => {
+    const children = childrenMap.get(elementId) || [];
+    if (children.length === 0) return NODE_HEIGHT;
+
+    const { rows } = getGridDimensions(children.length);
+    const childrenGridHeight = rows * NODE_HEIGHT + (rows - 1) * HORIZONTAL_GAP;
+
+    // Find max height of any child subtree
+    let maxChildSubtreeHeight = 0;
+    children.forEach((child) => {
+      const childHeight = getSubtreeHeight(child.id);
+      maxChildSubtreeHeight = Math.max(maxChildSubtreeHeight, childHeight);
+    });
+
+    return NODE_HEIGHT + VERTICAL_SPACING + childrenGridHeight + maxChildSubtreeHeight;
+  };
+
+  // Position nodes recursively with grid layout for children
   const positionNode = (element, x, y, depth = 0) => {
     nodes.push({
       id: element.id,
@@ -68,21 +100,16 @@ const buildTreeLayout = (elements) => {
     const children = childrenMap.get(element.id) || [];
     if (children.length === 0) return;
 
-    // Calculate total width needed for children
-    let totalChildrenWidth = 0;
-    const childWidths = children.map((child) => {
-      const width = getSubtreeWidth(child.id);
-      totalChildrenWidth += width;
-      return width;
-    });
-    totalChildrenWidth += (children.length - 1) * 40; // gaps
-
-    // Position children centered below parent
-    let currentX = x + NODE_WIDTH / 2 - totalChildrenWidth / 2;
+    const { cols, rows } = getGridDimensions(children.length);
+    const gridWidth = cols * NODE_WIDTH + (cols - 1) * HORIZONTAL_GAP;
+    const startX = x + NODE_WIDTH / 2 - gridWidth / 2;
+    const startY = y + VERTICAL_SPACING;
 
     children.forEach((child, index) => {
-      const childX = currentX + childWidths[index] / 2 - NODE_WIDTH / 2;
-      const childY = y + VERTICAL_SPACING;
+      const col = index % cols;
+      const row = Math.floor(index / cols);
+      const childX = startX + col * (NODE_WIDTH + HORIZONTAL_GAP);
+      const childY = startY + row * (NODE_HEIGHT + HORIZONTAL_GAP);
 
       // Create edge from parent to child
       edges.push({
@@ -94,8 +121,6 @@ const buildTreeLayout = (elements) => {
       });
 
       positionNode(child, childX, childY, depth + 1);
-
-      currentX += childWidths[index] + 40;
     });
   };
 
@@ -130,9 +155,10 @@ const TreeView = () => {
         nodesDraggable={false}
         nodesConnectable={false}
         elementsSelectable={false}
-        panOnDrag
+        panOnDrag={[1, 2]} // Only pan with middle/right mouse button
         zoomOnScroll
         zoomOnPinch
+        noDragClassName="nodrag"
       >
         <Background color="#e2e8f0" gap={20} />
         <Controls showInteractive={false} />
