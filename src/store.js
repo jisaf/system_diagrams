@@ -27,6 +27,9 @@ const useStore = create((set, get) => ({
   // Current C4 level (context, container, component, code)
   currentLevel: 'context',
 
+  // View mode: 'edit' for normal editing, 'tree' for hierarchical overview
+  viewMode: 'edit',
+
   // Hierarchical navigation state
   currentParentId: null,  // null = root view, showing top-level elements
   navigationHistory: [],  // Stack of parent IDs for back navigation
@@ -55,6 +58,8 @@ const useStore = create((set, get) => ({
   setMetadata: (metadata) => set({ metadata }),
 
   setCurrentLevel: (level) => set({ currentLevel: level }),
+
+  setViewMode: (mode) => set({ viewMode: mode }),
 
   // Navigate into an element (drill down)
   navigateInto: (elementId) => {
