@@ -1,18 +1,20 @@
 import { useState } from 'react';
-import { Download, Upload, FileJson, FileImage, FileCode, FileText, Layout, Share2, Check, AlertCircle } from 'lucide-react';
+import { Download, Upload, FileJson, FileImage, FileCode, FileText, Share2, Check, AlertCircle, Eye, GitBranch } from 'lucide-react';
 import useStore from '../store';
 import Breadcrumb from './Breadcrumb';
 import { exportAsPNG, exportAsSVG, generatePlantUML, generateMermaid, generateMarkdown, exportAsHTML, exportAsDrawio } from '../utils/exportUtils';
-import { applyHierarchicalLayout, applyGridLayout, applyCircularLayout, applyForceLayout } from '../utils/layoutUtils';
+// Layout utils kept for potential future use
+// import { applyHierarchicalLayout, applyGridLayout, applyCircularLayout, applyForceLayout } from '../utils/layoutUtils';
 import { exportToStructurizr, importFromStructurizr } from '../utils/structurizrUtils';
 import { generateShareUrl } from '../utils/shareUtils';
 import ModelSelector from './ModelSelector';
 
 const Header = () => {
-  const { metadata, setMetadata, exportModel, importModel, clearAll, getAllElements, updateElement, relationships } = useStore();
+  const { metadata, setMetadata, exportModel, importModel, clearAll } = useStore();
+  const viewMode = useStore((state) => state.viewMode);
+  const setViewMode = useStore((state) => state.setViewMode);
   const [showSettings, setShowSettings] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
-  const [showLayoutMenu, setShowLayoutMenu] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState(metadata.name);
   const [shareStatus, setShareStatus] = useState(null); // null | 'copied' | 'error'
@@ -191,18 +193,6 @@ const Header = () => {
     }
   };
 
-  const applyLayout = (layoutFn) => {
-    const elements = getAllElements();
-    const layoutedElements = layoutFn(elements, relationships);
-
-    // Update each element with new position
-    layoutedElements.forEach((el) => {
-      updateElement(el.type, el.id, { position: el.position });
-    });
-
-    setShowLayoutMenu(false);
-  };
-
   return (
     <header className="bg-white border-b border-gray-200 px-4 py-3">
       <div className="flex items-center justify-between">
@@ -359,46 +349,32 @@ const Header = () => {
               />
             </label>
 
-            <div className="relative">
+            {/* View Mode Toggle */}
+            <div className="flex items-center gap-1 bg-gray-100 rounded-md p-1">
               <button
-                onClick={() => setShowLayoutMenu(!showLayoutMenu)}
-                className="flex items-center gap-2 px-3 py-1.5 bg-purple-600 text-white rounded-md hover:bg-purple-700 text-sm transition-colors"
-                title="Auto-layout"
+                onClick={() => setViewMode('edit')}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded text-sm transition-colors ${
+                  viewMode === 'edit'
+                    ? 'bg-white shadow-sm text-gray-900'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+                title="Edit mode - navigate and edit elements"
               >
-                <Layout className="w-4 h-4" />
-                Layout
+                <Eye className="w-4 h-4" />
+                Edit
               </button>
-
-              {showLayoutMenu && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-                  <div className="py-1">
-                    <button
-                      onClick={() => applyLayout(applyHierarchicalLayout)}
-                      className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
-                    >
-                      Hierarchical
-                    </button>
-                    <button
-                      onClick={() => applyLayout(applyGridLayout)}
-                      className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
-                    >
-                      Grid
-                    </button>
-                    <button
-                      onClick={() => applyLayout(applyCircularLayout)}
-                      className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
-                    >
-                      Circular
-                    </button>
-                    <button
-                      onClick={() => applyLayout(applyForceLayout)}
-                      className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
-                    >
-                      Force-Directed
-                    </button>
-                  </div>
-                </div>
-              )}
+              <button
+                onClick={() => setViewMode('tree')}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded text-sm transition-colors ${
+                  viewMode === 'tree'
+                    ? 'bg-white shadow-sm text-gray-900'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+                title="Tree view - see full hierarchy"
+              >
+                <GitBranch className="w-4 h-4" />
+                Tree
+              </button>
             </div>
 
             <button
