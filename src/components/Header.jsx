@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Download, Upload, FileJson, FileImage, FileCode, FileText, Share2, Check, AlertCircle, Eye, GitBranch, Table } from 'lucide-react';
 import useStore from '../store';
 import Breadcrumb from './Breadcrumb';
-import { exportAsPNG, exportAsSVG, generatePlantUML, generateMermaid, generateMarkdown, exportAsHTML, exportAsDrawio, exportAsSpreadsheet } from '../utils/exportUtils';
+import { exportAsPNG, exportAsSVG, generatePlantUML, generateMermaid, generateMarkdown, exportAsHTML, exportAsDrawio, exportAsSpreadsheet, importFromSpreadsheet } from '../utils/exportUtils';
 // Layout utils kept for potential future use
 // import { applyHierarchicalLayout, applyGridLayout, applyCircularLayout, applyForceLayout } from '../utils/layoutUtils';
 import { exportToStructurizr, importFromStructurizr } from '../utils/structurizrUtils';
@@ -15,6 +15,7 @@ const Header = () => {
   const setViewMode = useStore((state) => state.setViewMode);
   const [showSettings, setShowSettings] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [showImportMenu, setShowImportMenu] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState(metadata.name);
   const [shareStatus, setShareStatus] = useState(null); // null | 'copied' | 'error'
@@ -84,6 +85,30 @@ const Header = () => {
       };
       reader.readAsText(file);
     }
+    setShowImportMenu(false);
+    // Reset the input so the same file can be selected again
+    event.target.value = '';
+  };
+
+  const handleImportCSV = (event) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const csvString = e.target.result;
+          const model = importFromSpreadsheet(csvString);
+          importModel(model);
+          alert(`Spreadsheet imported successfully! Created ${model.systems?.length || 0} systems, ${model.containers?.length || 0} containers, ${model.components?.length || 0} components.`);
+        } catch (error) {
+          alert('Error importing spreadsheet: ' + error.message);
+        }
+      };
+      reader.readAsText(file);
+    }
+    setShowImportMenu(false);
+    // Reset the input so the same file can be selected again
+    event.target.value = '';
   };
 
   const handleExportStructurizr = () => {
@@ -351,17 +376,45 @@ const Header = () => {
               )}
             </div>
 
-            <label className="flex items-center gap-2 px-3 py-1.5 bg-green-700 text-white rounded-md hover:bg-green-800 text-sm cursor-pointer transition-colors">
-              <Upload className="w-4 h-4" />
-              Import
-              <input
-                type="file"
-                accept=".json"
-                onChange={handleImportJSON}
-                className="hidden"
-                aria-label="Import JSON model file"
-              />
-            </label>
+            <div className="relative">
+              <button
+                onClick={() => setShowImportMenu(!showImportMenu)}
+                className="flex items-center gap-2 px-3 py-1.5 bg-green-700 text-white rounded-md hover:bg-green-800 text-sm transition-colors"
+                title="Import model"
+              >
+                <Upload className="w-4 h-4" />
+                Import
+              </button>
+
+              {showImportMenu && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                  <div className="py-1">
+                    <label className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center gap-2 cursor-pointer">
+                      <FileJson className="w-4 h-4" />
+                      JSON / Structurizr
+                      <input
+                        type="file"
+                        accept=".json"
+                        onChange={handleImportJSON}
+                        className="hidden"
+                        aria-label="Import JSON model file"
+                      />
+                    </label>
+                    <label className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center gap-2 cursor-pointer">
+                      <Table className="w-4 h-4" />
+                      Spreadsheet (.csv)
+                      <input
+                        type="file"
+                        accept=".csv"
+                        onChange={handleImportCSV}
+                        className="hidden"
+                        aria-label="Import CSV spreadsheet"
+                      />
+                    </label>
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* View Mode Toggle */}
             <div className="flex items-center gap-1 bg-gray-100 rounded-md p-1">

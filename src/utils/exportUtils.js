@@ -614,6 +614,7 @@ export const exportAsSpreadsheet = (model) => {
   }
 
   const headers = [
+    'ID',
     ...depthHeaders,
     'Type',
     'PM',
@@ -638,6 +639,7 @@ export const exportAsSpreadsheet = (model) => {
     }
 
     return [
+      element.id || '',
       ...hierarchyCols,
       element.type || '',
       element.ownerPM || '',
@@ -667,4 +669,294 @@ export const exportAsSpreadsheet = (model) => {
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
   const filename = `${(model.metadata?.name || 'architecture').replace(/\s+/g, '-').toLowerCase()}.csv`;
   saveAs(blob, filename);
+};
+
+/**
+ * Parse CSV string into rows and columns
+ */
+const parseCSV = (csvString) => {
+  const rows = [];
+  let currentRow = [];
+  let currentCell = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < csvString.length; i++) {
+    const char = csvString[i];
+    const nextChar = csvString[i + 1];
+
+    if (inQuotes) {
+      if (char === '"' && nextChar === '"') {
+        // Escaped quote
+        currentCell += '"';
+        i++; // Skip next quote
+      } else if (char === '"') {
+        // End of quoted field
+        inQuotes = false;
+      } else {
+        currentCell += char;
+      }
+    } else {
+      if (char === '"') {
+        // Start of quoted field
+        inQuotes = true;
+      } else if (char === ',') {
+        // End of cell
+        currentRow.push(currentCell);
+        currentCell = '';
+      } else if (char === '\n' || (char === '\r' && nextChar === '\n')) {
+        // End of row
+        currentRow.push(currentCell);
+        rows.push(currentRow);
+        currentRow = [];
+        currentCell = '';
+        if (char === '\r') i++; // Skip \n in \r\n
+      } else if (char !== '\r') {
+        currentCell += char;
+      }
+    }
+  }
+
+  // Don't forget the last cell/row
+  if (currentCell || currentRow.length > 0) {
+    currentRow.push(currentCell);
+    rows.push(currentRow);
+  }
+
+  return rows;
+};
+
+/**
+ * Generate a UUID for new elements
+ */
+const generateId = () => {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+};
+
+/**
+ * Import model from CSV spreadsheet
+ * Reconstructs hierarchy from Level columns
+ * Creates new elements or updates existing ones based on ID
+ */
+export const importFromSpreadsheet = (csvString) => {
+  const rows = parseCSV(csvString);
+  if (rows.length < 2) {
+    throw new Error('CSV must have at least a header row and one data row');
+  }
+
+  const headers = rows[0].map(h => h.trim());
+  const dataRows = rows.slice(1).filter(row => row.some(cell => cell.trim()));
+
+  // Find column indices
+  const idColIndex = headers.findIndex(h => h.toLowerCase() === 'id');
+  const typeColIndex = headers.findIndex(h => h.toLowerCase() === 'type');
+  const pmColIndex = headers.findIndex(h => h.toLowerCase() === 'pm');
+  const uxColIndex = headers.findIndex(h => h.toLowerCase() === 'ux');
+  const techColIndex = headers.findIndex(h => h.toLowerCase() === 'tech');
+  const technologyColIndex = headers.findIndex(h => h.toLowerCase() === 'technology');
+  const descriptionColIndex = headers.findIndex(h => h.toLowerCase() === 'description');
+
+  // Find Level columns (all columns starting with "Level")
+  const levelColIndices = [];
+  headers.forEach((h, i) => {
+    if (h.toLowerCase().startsWith('level')) {
+      levelColIndices.push(i);
+    }
+  });
+
+  if (levelColIndices.length === 0) {
+    throw new Error('No Level columns found in CSV. Expected columns like "Level 1", "Level 2", etc.');
+  }
+
+  if (typeColIndex === -1) {
+    throw new Error('Type column is required');
+  }
+
+  // Build elements from rows
+  // Key insight: each row defines ONE element at its deepest unique level
+  // We need to deduplicate parents that appear in multiple rows
+
+  const elementsByPath = new Map(); // path -> element
+  const elements = {
+    systems: [],
+    containers: [],
+    components: [],
+    people: [],
+    externalSystems: [],
+  };
+
+  // Process each row
+  dataRows.forEach((row) => {
+    const getValue = (index) => (index >= 0 && index < row.length) ? row[index]?.trim() || '' : '';
+
+    const id = getValue(idColIndex);
+    const type = getValue(typeColIndex).toLowerCase();
+    const ownerPM = getValue(pmColIndex);
+    const ownerUX = getValue(uxColIndex);
+    const ownerTech = getValue(techColIndex);
+    const technology = getValue(technologyColIndex);
+    const description = getValue(descriptionColIndex);
+
+    // Get level values
+    const levelValues = levelColIndices.map(i => getValue(i));
+
+    // Find the "defining level" - the rightmost level where the value is unique
+    // (different from the previous level, or it's the last non-empty level)
+    let definingLevel = 0;
+    for (let i = 0; i < levelValues.length; i++) {
+      const val = levelValues[i];
+      if (!val) break; // Stop at empty
+
+      // Check if this is different from previous
+      if (i === 0 || val !== levelValues[i - 1]) {
+        definingLevel = i;
+      }
+    }
+
+    // Build the path up to and including the defining level
+    const pathParts = [];
+    for (let i = 0; i <= definingLevel; i++) {
+      if (levelValues[i]) {
+        // Only add if different from previous (to handle repeated names)
+        if (i === 0 || levelValues[i] !== levelValues[i - 1]) {
+          pathParts.push(levelValues[i]);
+        }
+      }
+    }
+
+    const elementPath = pathParts.join('/');
+    const elementName = pathParts[pathParts.length - 1];
+    const parentPath = pathParts.slice(0, -1).join('/');
+
+    // Skip if we've already processed this path (deduplication)
+    if (elementsByPath.has(elementPath)) {
+      // Update existing element with any new data from this row
+      const existing = elementsByPath.get(elementPath);
+      if (ownerPM && !existing.ownerPM) existing.ownerPM = ownerPM;
+      if (ownerUX && !existing.ownerUX) existing.ownerUX = ownerUX;
+      if (ownerTech && !existing.ownerTech) existing.ownerTech = ownerTech;
+      if (technology && !existing.technology) existing.technology = technology;
+      if (description && !existing.description) existing.description = description;
+      return;
+    }
+
+    // Determine element type
+    let elementType = type;
+    if (!elementType || !['system', 'container', 'component', 'person', 'externalsystem'].includes(elementType)) {
+      // Infer type from level if not specified
+      if (definingLevel === 0) elementType = 'system';
+      else if (definingLevel === 1) elementType = 'container';
+      else elementType = 'component';
+    }
+
+    // Normalize externalSystem
+    if (elementType === 'externalsystem') elementType = 'externalSystem';
+
+    // Create element
+    const element = {
+      id: id || generateId(),
+      name: elementName,
+      type: elementType,
+      description: description || '',
+      technology: technology || '',
+      ownerPM: ownerPM || '',
+      ownerUX: ownerUX || '',
+      ownerTech: ownerTech || '',
+      position: { x: 100, y: 100 }, // Default position, will be laid out later
+    };
+
+    // Store for parent lookup
+    elementsByPath.set(elementPath, element);
+
+    // Set parentId if this element has a parent
+    if (parentPath && elementsByPath.has(parentPath)) {
+      element.parentId = elementsByPath.get(parentPath).id;
+    }
+
+    // Add to appropriate collection
+    switch (elementType) {
+      case 'system':
+        elements.systems.push(element);
+        break;
+      case 'container':
+        elements.containers.push(element);
+        break;
+      case 'component':
+        elements.components.push(element);
+        break;
+      case 'person':
+        elements.people.push(element);
+        break;
+      case 'externalSystem':
+        elements.externalSystems.push(element);
+        break;
+    }
+  });
+
+  // Auto-layout: arrange elements in a grid
+  let x = 100;
+  let y = 100;
+  const spacing = 250;
+  const maxPerRow = 4;
+  let count = 0;
+
+  const allElements = [
+    ...elements.systems,
+    ...elements.containers,
+    ...elements.components,
+    ...elements.people,
+    ...elements.externalSystems,
+  ];
+
+  // Group by parentId for better layout
+  const byParent = new Map();
+  allElements.forEach(el => {
+    const key = el.parentId || 'root';
+    if (!byParent.has(key)) byParent.set(key, []);
+    byParent.get(key).push(el);
+  });
+
+  // Layout root elements first, then children
+  const layoutElements = (parentId, startX, startY) => {
+    const children = byParent.get(parentId || 'root') || [];
+    let cx = startX;
+    let cy = startY;
+    let rowCount = 0;
+
+    children.forEach(el => {
+      el.position = { x: cx, y: cy };
+      rowCount++;
+      if (rowCount >= maxPerRow) {
+        rowCount = 0;
+        cx = startX;
+        cy += spacing;
+      } else {
+        cx += spacing;
+      }
+    });
+  };
+
+  // Layout root elements
+  layoutElements(null, 100, 100);
+
+  // Layout children under each parent
+  byParent.forEach((children, parentId) => {
+    if (parentId !== 'root') {
+      layoutElements(parentId, 100, 100);
+    }
+  });
+
+  return {
+    metadata: {
+      name: 'Imported Model',
+      version: '1.0',
+      author: '',
+    },
+    ...elements,
+    relationships: [],
+    shadows: [],
+  };
 };
