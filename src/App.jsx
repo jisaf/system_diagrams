@@ -14,6 +14,7 @@ import '@xyflow/react/dist/style.css';
 import useStore from './store';
 import C4Node from './components/C4Node';
 import ShadowNode from './components/ShadowNode';
+import TreeView from './components/TreeView';
 import Toolbar from './components/Toolbar';
 import PropertiesPanel from './components/PropertiesPanel';
 import Header from './components/Header';
@@ -71,6 +72,7 @@ function App() {
 
   const navigateUp = useStore((state) => state.navigateUp);
   const navigateToRoot = useStore((state) => state.navigateToRoot);
+  const viewMode = useStore((state) => state.viewMode);
 
   // Custom handler to intercept dimension changes
   const handleNodesChange = useCallback((changes) => {
@@ -358,46 +360,51 @@ function App() {
       <div className="flex flex-1 overflow-hidden">
         <Toolbar />
 
+        {/* Main Canvas Area */}
         <div className="flex-1 relative">
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            onNodesChange={handleNodesChange}
-            onEdgesChange={onEdgesChange}
-            onConnect={onConnect}
-            onNodeDragStop={onNodeDragStop}
-            onNodeClick={onNodeClick}
-            onNodeDoubleClick={onNodeDoubleClick}
-            onEdgeClick={onEdgeClick}
-            onPaneClick={onPaneClick}
-            onDrop={onDrop}
-            onDragOver={onDragOver}
-            onInit={setReactFlowInstance}
-            nodeTypes={nodeTypes}
-            fitView
-            className="bg-gray-50"
-          >
-            <Background color="#cbd5e1" gap={16} />
-            <Controls />
-            <MiniMap
-              nodeColor={(node) => {
-                switch (node.data.type) {
-                  case 'system':
-                    return '#3b82f6';
-                  case 'container':
-                    return '#22c55e';
-                  case 'component':
-                    return '#eab308';
-                  case 'person':
-                    return '#a855f7';
-                  case 'externalSystem':
-                    return '#6b7280';
-                  default:
-                    return '#94a3b8';
-                }
-              }}
-            />
-          </ReactFlow>
+          {viewMode === 'tree' ? (
+            <TreeView />
+          ) : (
+            <ReactFlow
+              nodes={nodes}
+              edges={edges}
+              onNodesChange={handleNodesChange}
+              onEdgesChange={onEdgesChange}
+              onConnect={onConnect}
+              onNodeDragStop={onNodeDragStop}
+              onNodeClick={onNodeClick}
+              onNodeDoubleClick={onNodeDoubleClick}
+              onEdgeClick={onEdgeClick}
+              onPaneClick={onPaneClick}
+              onDrop={onDrop}
+              onDragOver={onDragOver}
+              onInit={setReactFlowInstance}
+              nodeTypes={nodeTypes}
+              fitView
+              className="bg-gray-50"
+            >
+              <Background color="#cbd5e1" gap={16} />
+              <Controls />
+              <MiniMap
+                nodeColor={(node) => {
+                  switch (node.data.type) {
+                    case 'system':
+                      return '#3b82f6';
+                    case 'container':
+                      return '#22c55e';
+                    case 'component':
+                      return '#eab308';
+                    case 'person':
+                      return '#a855f7';
+                    case 'externalSystem':
+                      return '#6b7280';
+                    default:
+                      return '#94a3b8';
+                  }
+                }}
+              />
+            </ReactFlow>
+          )}
         </div>
 
         <PropertiesPanel />
