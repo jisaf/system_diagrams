@@ -554,3 +554,117 @@ export const exportAsDrawio = (model) => {
   const filename = `${(model.metadata?.name || 'c4-diagram').replace(/\s+/g, '-').toLowerCase()}.drawio`;
   saveAs(blob, filename);
 };
+
+/**
+ * Export model as CSV spreadsheet with hierarchy columns
+ * Each depth level gets its own column, all cells populated for filtering
+ */
+export const exportAsSpreadsheet = (model) => {
+  // Collect all elements into a single array
+  const allElements = [
+    ...(model.systems || []).map(el => ({ ...el, type: 'system' })),
+    ...(model.containers || []).map(el => ({ ...el, type: 'container' })),
+    ...(model.components || []).map(el => ({ ...el, type: 'component' })),
+    ...(model.people || []).map(el => ({ ...el, type: 'person' })),
+    ...(model.externalSystems || []).map(el => ({ ...el, type: 'externalSystem' })),
+  ];
+
+  // Build lookup maps
+  const elementById = new Map(allElements.map(el => [el.id, el]));
+
+  // Build ancestry chain for each element (from root to element)
+  const getAncestryChain = (element) => {
+    const chain = [element];
+    let current = element;
+
+    while (current.parentId && elementById.has(current.parentId)) {
+      current = elementById.get(current.parentId);
+      chain.unshift(current);
+    }
+
+    return chain;
+  };
+
+  // Calculate max depth across all elements
+  let maxDepth = 0;
+  const elementChains = allElements.map(el => {
+    const chain = getAncestryChain(el);
+    maxDepth = Math.max(maxDepth, chain.length);
+    return { element: el, chain };
+  });
+
+  // Sort elements by hierarchy path for logical grouping
+  elementChains.sort((a, b) => {
+    // Compare chain elements one by one
+    const minLen = Math.min(a.chain.length, b.chain.length);
+    for (let i = 0; i < minLen; i++) {
+      const nameCompare = (a.chain[i].name || '').localeCompare(b.chain[i].name || '');
+      if (nameCompare !== 0) return nameCompare;
+    }
+    // Shorter chains come first (parents before children)
+    return a.chain.length - b.chain.length;
+  });
+
+  // Generate column headers
+  const depthHeaders = [];
+  for (let i = 0; i < maxDepth; i++) {
+    if (i === 0) depthHeaders.push('Level 1 (System)');
+    else if (i === 1) depthHeaders.push('Level 2 (Container)');
+    else depthHeaders.push(`Level ${i + 1}`);
+  }
+
+  const headers = [
+    ...depthHeaders,
+    'Type',
+    'PM',
+    'UX',
+    'Tech',
+    'Technology',
+    'Description',
+  ];
+
+  // Generate rows
+  const rows = elementChains.map(({ element, chain }) => {
+    // Fill hierarchy columns - every cell gets the name at that level
+    const hierarchyCols = [];
+    for (let i = 0; i < maxDepth; i++) {
+      if (i < chain.length) {
+        hierarchyCols.push(chain[i].name || '');
+      } else {
+        // For cells beyond this element's depth, repeat the element's name
+        // This keeps filtering intuitive - filter Level 3 = "Login" shows all Login rows
+        hierarchyCols.push(element.name || '');
+      }
+    }
+
+    return [
+      ...hierarchyCols,
+      element.type || '',
+      element.ownerPM || '',
+      element.ownerUX || '',
+      element.ownerTech || '',
+      element.technology || '',
+      element.description || '',
+    ];
+  });
+
+  // Convert to CSV
+  const escapeCSV = (value) => {
+    const str = String(value || '');
+    // Escape quotes and wrap in quotes if contains comma, quote, or newline
+    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+  };
+
+  const csvContent = [
+    headers.map(escapeCSV).join(','),
+    ...rows.map(row => row.map(escapeCSV).join(','))
+  ].join('\n');
+
+  // Download
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
+  const filename = `${(model.metadata?.name || 'architecture').replace(/\s+/g, '-').toLowerCase()}.csv`;
+  saveAs(blob, filename);
+};

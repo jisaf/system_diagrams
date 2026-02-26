@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Download, Upload, FileJson, FileImage, FileCode, FileText, Share2, Check, AlertCircle, Eye, GitBranch } from 'lucide-react';
+import { Download, Upload, FileJson, FileImage, FileCode, FileText, Share2, Check, AlertCircle, Eye, GitBranch, Table } from 'lucide-react';
 import useStore from '../store';
 import Breadcrumb from './Breadcrumb';
-import { exportAsPNG, exportAsSVG, generatePlantUML, generateMermaid, generateMarkdown, exportAsHTML, exportAsDrawio } from '../utils/exportUtils';
+import { exportAsPNG, exportAsSVG, generatePlantUML, generateMermaid, generateMarkdown, exportAsHTML, exportAsDrawio, exportAsSpreadsheet } from '../utils/exportUtils';
 // Layout utils kept for potential future use
 // import { applyHierarchicalLayout, applyGridLayout, applyCircularLayout, applyForceLayout } from '../utils/layoutUtils';
 import { exportToStructurizr, importFromStructurizr } from '../utils/structurizrUtils';
@@ -169,6 +169,12 @@ const Header = () => {
     setShowExportMenu(false);
   };
 
+  const handleExportSpreadsheet = () => {
+    const model = exportModel();
+    exportAsSpreadsheet(model);
+    setShowExportMenu(false);
+  };
+
   const handleTitleDoubleClick = () => {
     setEditedTitle(metadata.name);
     setIsEditingTitle(true);
@@ -331,6 +337,14 @@ const Header = () => {
                     >
                       <FileCode className="w-4 h-4" />
                       Draw.io (.drawio)
+                    </button>
+                    <hr className="my-1" />
+                    <button
+                      onClick={handleExportSpreadsheet}
+                      className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center gap-2"
+                    >
+                      <Table className="w-4 h-4" />
+                      Spreadsheet (.csv)
                     </button>
                   </div>
                 </div>
