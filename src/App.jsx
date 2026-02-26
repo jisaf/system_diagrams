@@ -358,7 +358,7 @@ function App() {
       <Header />
 
       <div className="flex flex-1 overflow-hidden">
-        <Toolbar />
+        {viewMode === 'edit' && <Toolbar />}
 
         {/* Main Canvas Area */}
         <div className="flex-1 relative">
@@ -407,7 +407,7 @@ function App() {
           )}
         </div>
 
-        <PropertiesPanel />
+        {viewMode === 'edit' && <PropertiesPanel />}
       </div>
     </div>
   );
