@@ -613,6 +613,25 @@ export const exportAsSpreadsheet = (model) => {
     else depthHeaders.push(`Level ${i + 1}`);
   }
 
+  // Default phase names for columns
+  const defaultPhases = ['Discovery', 'Design', 'Build', 'Testing', 'Deployment', 'Maintenance'];
+
+  // Collect all unique phase names used across elements
+  const usedPhaseNames = new Set();
+  allElements.forEach(el => {
+    (el.phases || []).forEach(phase => {
+      usedPhaseNames.add(phase.name);
+    });
+  });
+
+  // Combine default phases with any custom phases, maintaining order
+  const phaseNames = [...defaultPhases];
+  usedPhaseNames.forEach(name => {
+    if (!phaseNames.includes(name)) {
+      phaseNames.push(name);
+    }
+  });
+
   const headers = [
     'ID',
     ...depthHeaders,
@@ -622,6 +641,8 @@ export const exportAsSpreadsheet = (model) => {
     'Tech',
     'Technology',
     'Description',
+    // Add phase columns - each phase gets Start and End columns
+    ...phaseNames.flatMap(name => [`${name} Start`, `${name} End`]),
   ];
 
   // Generate rows
@@ -638,6 +659,21 @@ export const exportAsSpreadsheet = (model) => {
       }
     }
 
+    // Build phase lookup for this element
+    const elementPhases = new Map();
+    (element.phases || []).forEach(phase => {
+      elementPhases.set(phase.name, phase);
+    });
+
+    // Generate phase columns
+    const phaseCols = phaseNames.flatMap(phaseName => {
+      const phase = elementPhases.get(phaseName);
+      if (phase) {
+        return [phase.startMonth || '', phase.endMonth || ''];
+      }
+      return ['', ''];
+    });
+
     return [
       element.id || '',
       ...hierarchyCols,
@@ -647,6 +683,7 @@ export const exportAsSpreadsheet = (model) => {
       element.ownerTech || '',
       element.technology || '',
       element.description || '',
+      ...phaseCols,
     ];
   });
 
@@ -767,6 +804,25 @@ export const importFromSpreadsheet = (csvString) => {
     }
   });
 
+  // Find phase columns (columns ending with " Start" or " End")
+  const phaseColumns = new Map(); // phaseName -> { startIndex, endIndex }
+  headers.forEach((h, i) => {
+    const headerLower = h.toLowerCase();
+    if (headerLower.endsWith(' start')) {
+      const phaseName = h.slice(0, -6).trim(); // Remove " Start"
+      if (!phaseColumns.has(phaseName)) {
+        phaseColumns.set(phaseName, {});
+      }
+      phaseColumns.get(phaseName).startIndex = i;
+    } else if (headerLower.endsWith(' end')) {
+      const phaseName = h.slice(0, -4).trim(); // Remove " End"
+      if (!phaseColumns.has(phaseName)) {
+        phaseColumns.set(phaseName, {});
+      }
+      phaseColumns.get(phaseName).endIndex = i;
+    }
+  });
+
   if (levelColIndices.length === 0) {
     throw new Error('No Level columns found in CSV. Expected columns like "Level 1", "Level 2", etc.');
   }
@@ -855,6 +911,23 @@ export const importFromSpreadsheet = (csvString) => {
     // Normalize externalSystem
     if (elementType === 'externalsystem') elementType = 'externalSystem';
 
+    // Parse phases from columns
+    const phases = [];
+    phaseColumns.forEach((indices, phaseName) => {
+      const startMonth = indices.startIndex !== undefined ? getValue(indices.startIndex) : '';
+      const endMonth = indices.endIndex !== undefined ? getValue(indices.endIndex) : '';
+
+      // Only add phase if at least one date is present
+      if (startMonth || endMonth) {
+        phases.push({
+          id: generateId(),
+          name: phaseName,
+          startMonth: startMonth || '',
+          endMonth: endMonth || '',
+        });
+      }
+    });
+
     // Create element
     const element = {
       id: id || generateId(),
@@ -865,6 +938,7 @@ export const importFromSpreadsheet = (csvString) => {
       ownerPM: ownerPM || '',
       ownerUX: ownerUX || '',
       ownerTech: ownerTech || '',
+      phases: phases.length > 0 ? phases : [],
       position: { x: 100, y: 100 }, // Default position, will be laid out later
     };
 
