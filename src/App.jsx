@@ -15,6 +15,7 @@ import useStore from './store';
 import C4Node from './components/C4Node';
 import ShadowNode from './components/ShadowNode';
 import TreeView from './components/TreeView';
+import GanttView from './components/GanttView';
 import Toolbar from './components/Toolbar';
 import PropertiesPanel from './components/PropertiesPanel';
 import Header from './components/Header';
@@ -363,6 +364,8 @@ function App() {
         <div className="flex-1 relative">
           {viewMode === 'tree' ? (
             <TreeView />
+          ) : viewMode === 'gantt' ? (
+            <GanttView />
           ) : (
             <ReactFlow
               nodes={nodes}
