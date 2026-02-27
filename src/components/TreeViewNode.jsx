@@ -80,7 +80,10 @@ const TreeViewNode = ({ data }) => {
   };
 
   const handleGoToElement = (e) => {
-    e.stopPropagation();
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
     // Navigate to the parent context where this element lives
     const targetParentId = data.parentId || null;
     if (targetParentId) {
@@ -93,8 +96,18 @@ const TreeViewNode = ({ data }) => {
     setViewMode('edit');
   };
 
+  // Handle double-click on the node itself
+  const handleDoubleClick = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    handleGoToElement();
+  };
+
   return (
-    <div className={`${getNodeStyle()} relative`}>
+    <div
+      className={`${getNodeStyle()} relative cursor-pointer`}
+      onDoubleClick={handleDoubleClick}
+    >
       <Handle
         type="target"
         position={Position.Top}

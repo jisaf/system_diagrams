@@ -174,13 +174,13 @@ const TreeView = () => {
         fitViewOptions={{ padding: 0.2 }}
         nodesDraggable={false}
         nodesConnectable={false}
-        elementsSelectable={false}
+        elementsSelectable={true}
         panOnDrag={[1, 2]} // Only pan with middle/right mouse button
         zoomOnScroll
         zoomOnPinch
         zoomOnDoubleClick={false} // Disable double-click zoom so we can use it for navigation
-        noDragClassName="nodrag"
         onNodeDoubleClick={handleNodeDoubleClick}
+        onNodeClick={handleNodeDoubleClick} // Also handle single click for easier navigation
       >
         <Background color="#e2e8f0" gap={20} />
         <Controls showInteractive={false} />
