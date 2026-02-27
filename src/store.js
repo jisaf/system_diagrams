@@ -218,6 +218,7 @@ const useStore = create((set, get) => ({
       id: `${type}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       type,
       parentId: state.currentParentId,  // Auto-assign to current context
+      phases: [],
       ...element,
     };
 
