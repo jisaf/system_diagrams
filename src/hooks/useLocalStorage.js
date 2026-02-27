@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import useStore from '../store';
 import { getModelFromUrl, hasSharedModel, clearUrlHash } from '../utils/shareUtils';
+import { hasStoredModelId } from './useModels';
 
 const LOCAL_STORAGE_KEY = 'c4-model-autosave';
 const AUTOSAVE_INTERVAL = 30000; // 30 seconds
@@ -93,6 +94,12 @@ export const useLocalStorage = () => {
       } catch (error) {
         console.error('Error loading shared model from URL:', error);
       }
+    }
+
+    // Skip local storage restore if we have a Supabase model to auto-load
+    if (hasStoredModelId()) {
+      console.log('Supabase model will be auto-loaded, skipping localStorage restore');
+      return;
     }
 
     // Fall back to local storage

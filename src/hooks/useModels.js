@@ -1,11 +1,16 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import useStore from '../store';
+
+const LAST_MODEL_KEY = 'c4-last-model-id';
 
 export const useModels = () => {
   const [models, setModels] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [currentModelId, setCurrentModelId] = useState(null);
+  const initialLoadDone = useRef(false);
+  const importModel = useStore((state) => state.importModel);
 
   // Fetch all models
   const fetchModels = useCallback(async () => {
@@ -31,7 +36,7 @@ export const useModels = () => {
   }, []);
 
   // Load a specific model
-  const loadModel = useCallback(async (id) => {
+  const loadModel = useCallback(async (id, skipImport = false) => {
     if (!isSupabaseConfigured()) return null;
 
     setLoading(true);
@@ -46,15 +51,28 @@ export const useModels = () => {
 
       if (fetchError) throw fetchError;
       setCurrentModelId(id);
+
+      // Store the model ID for next session
+      localStorage.setItem(LAST_MODEL_KEY, id);
+
+      // Auto-import the model data unless skipped
+      if (!skipImport && data?.data) {
+        importModel(data.data);
+      }
+
       return data;
     } catch (err) {
       setError(err.message);
       console.error('Error loading model:', err);
+      // Clear stored ID if model no longer exists
+      if (err.message?.includes('not found') || err.code === 'PGRST116') {
+        localStorage.removeItem(LAST_MODEL_KEY);
+      }
       return null;
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [importModel]);
 
   // Save model (create or update)
   const saveModel = useCallback(async (name, modelData) => {
@@ -172,10 +190,27 @@ export const useModels = () => {
     setCurrentModelId(null);
   }, []);
 
-  // Fetch models on mount
+  // Fetch models on mount and auto-load last accessed model
   useEffect(() => {
-    fetchModels();
-  }, [fetchModels]);
+    const initializeModels = async () => {
+      if (!isSupabaseConfigured()) return;
+
+      await fetchModels();
+
+      // Only auto-load once
+      if (initialLoadDone.current) return;
+      initialLoadDone.current = true;
+
+      // Check for last accessed model
+      const lastModelId = localStorage.getItem(LAST_MODEL_KEY);
+      if (lastModelId) {
+        console.log('Auto-loading last accessed model:', lastModelId);
+        await loadModel(lastModelId);
+      }
+    };
+
+    initializeModels();
+  }, [fetchModels, loadModel]);
 
   return {
     models,
@@ -191,4 +226,9 @@ export const useModels = () => {
     deleteModel,
     newModel,
   };
+};
+
+// Export helper to check if there's a stored model ID (for useLocalStorage)
+export const hasStoredModelId = () => {
+  return isSupabaseConfigured() && localStorage.getItem(LAST_MODEL_KEY) !== null;
 };
