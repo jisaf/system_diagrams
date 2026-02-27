@@ -247,9 +247,10 @@ function App() {
         navigateToRoot();
       }
 
-      // Enter - drill into selected element
+      // Enter - drill into selected element if it has children
       if (event.key === 'Enter' && selectedElement) {
-        if (selectedElement.type === 'system' || selectedElement.type === 'container') {
+        const hasChildren = useStore.getState().hasChildren;
+        if (hasChildren(selectedElement.id)) {
           navigateInto(selectedElement.id);
         }
       }
@@ -286,21 +287,19 @@ function App() {
       const element = getAllElements().find((el) => el.id === node.id);
       if (!element) return;
 
+      const hasChildren = useStore.getState().hasChildren;
+
       // If it's a shadow, navigate INTO the target (show its children)
       if (element.type === 'shadow' && element.targetId) {
         const target = getAllElements().find((el) => el.id === element.targetId);
-        if (target) {
-          // Navigate into the target element to see its children
-          // Only if target can have children (system or container)
-          if (target.type === 'system' || target.type === 'container') {
-            navigateInto(target.id);
-          }
+        if (target && hasChildren(target.id)) {
+          navigateInto(target.id);
           return;
         }
       }
 
-      // Normal behavior: navigate into the element
-      if (element.type === 'system' || element.type === 'container') {
+      // Navigate into any element that has children (infinite nesting support)
+      if (hasChildren(element.id)) {
         navigateInto(element.id);
       }
     },
