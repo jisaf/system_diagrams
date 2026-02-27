@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, Trash2 } from 'lucide-react';
 import useStore from '../store';
+import PhaseEditor from './PhaseEditor';
 
 const PropertiesPanel = () => {
   const {
@@ -126,6 +127,12 @@ const PropertiesPanel = () => {
         ownerTech: formData.ownerTech,
       };
       updateElement(selectedElement.type, selectedElement.id, updates);
+    }
+  };
+
+  const handlePhasesChange = (newPhases) => {
+    if (selectedElement) {
+      updateElement(selectedElement.type, selectedElement.id, { phases: newPhases });
     }
   };
 
@@ -541,6 +548,12 @@ const PropertiesPanel = () => {
                 />
               </div>
             </div>
+
+            {/* Timeline Phases */}
+            <PhaseEditor
+              phases={selectedElement.phases || []}
+              onChange={handlePhasesChange}
+            />
           </>
         )}
 
