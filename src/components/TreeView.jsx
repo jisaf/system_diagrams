@@ -34,53 +34,73 @@ const buildTreeLayout = (elements) => {
 
   const NODE_WIDTH = 180;
   const NODE_HEIGHT = 70;
-  const HORIZONTAL_GAP = 20;
-  const VERTICAL_SPACING = 100;
+  const HORIZONTAL_GAP = 40;
+  const VERTICAL_SPACING = 120;
   const GRID_COLUMNS = 3; // Max columns in grid layout
 
-  // Calculate grid dimensions for children
-  const getGridDimensions = (numChildren) => {
-    if (numChildren === 0) return { cols: 0, rows: 0 };
-    const cols = Math.min(numChildren, GRID_COLUMNS);
-    const rows = Math.ceil(numChildren / cols);
-    return { cols, rows };
-  };
-
-  // Calculate subtree width recursively (now with grid layout)
+  // Calculate subtree width recursively
   const getSubtreeWidth = (elementId) => {
     const children = childrenMap.get(elementId) || [];
     if (children.length === 0) return NODE_WIDTH;
 
-    // Calculate width based on grid layout for direct children
-    const { cols } = getGridDimensions(children.length);
-    const directChildrenWidth = cols * NODE_WIDTH + (cols - 1) * HORIZONTAL_GAP;
+    // For grid layout, we need to calculate width per row and take the max
+    const cols = Math.min(children.length, GRID_COLUMNS);
 
-    // Also need to consider grandchildren
-    let maxChildSubtreeWidth = 0;
-    children.forEach((child) => {
-      const childWidth = getSubtreeWidth(child.id);
-      maxChildSubtreeWidth = Math.max(maxChildSubtreeWidth, childWidth);
-    });
+    // Calculate total width needed: sum of widths for each column
+    // Each column's width is the max subtree width of elements in that column
+    const columnWidths = [];
+    for (let col = 0; col < cols; col++) {
+      let maxWidth = NODE_WIDTH;
+      for (let i = col; i < children.length; i += cols) {
+        const childWidth = getSubtreeWidth(children[i].id);
+        maxWidth = Math.max(maxWidth, childWidth);
+      }
+      columnWidths.push(maxWidth);
+    }
 
-    return Math.max(NODE_WIDTH, directChildrenWidth, maxChildSubtreeWidth);
+    const totalWidth = columnWidths.reduce((sum, w) => sum + w, 0) + (cols - 1) * HORIZONTAL_GAP;
+    return Math.max(NODE_WIDTH, totalWidth);
   };
 
-  // Calculate subtree height (needed for proper vertical spacing)
+  // Calculate subtree height recursively
   const getSubtreeHeight = (elementId) => {
     const children = childrenMap.get(elementId) || [];
     if (children.length === 0) return NODE_HEIGHT;
 
-    const { rows } = getGridDimensions(children.length);
-    const childrenGridHeight = rows * NODE_HEIGHT + (rows - 1) * HORIZONTAL_GAP;
+    const cols = Math.min(children.length, GRID_COLUMNS);
+    const numRows = Math.ceil(children.length / cols);
 
-    // Find max height of any child subtree
-    let maxChildSubtreeHeight = 0;
-    children.forEach((child) => {
-      const childHeight = getSubtreeHeight(child.id);
-      maxChildSubtreeHeight = Math.max(maxChildSubtreeHeight, childHeight);
-    });
+    // For each row, find the max height of children in that row (including their subtrees)
+    let totalRowsHeight = 0;
+    for (let row = 0; row < numRows; row++) {
+      let maxRowHeight = NODE_HEIGHT;
+      for (let col = 0; col < cols; col++) {
+        const childIndex = row * cols + col;
+        if (childIndex < children.length) {
+          const childHeight = getSubtreeHeight(children[childIndex].id);
+          maxRowHeight = Math.max(maxRowHeight, childHeight);
+        }
+      }
+      totalRowsHeight += maxRowHeight;
+      if (row < numRows - 1) {
+        totalRowsHeight += VERTICAL_SPACING;
+      }
+    }
 
-    return NODE_HEIGHT + VERTICAL_SPACING + childrenGridHeight + maxChildSubtreeHeight;
+    return NODE_HEIGHT + VERTICAL_SPACING + totalRowsHeight;
+  };
+
+  // Get the height of a single element's subtree (used for row offset calculation)
+  const getRowHeight = (children, cols, rowIndex) => {
+    let maxHeight = NODE_HEIGHT;
+    for (let col = 0; col < cols; col++) {
+      const childIndex = rowIndex * cols + col;
+      if (childIndex < children.length) {
+        const childHeight = getSubtreeHeight(children[childIndex].id);
+        maxHeight = Math.max(maxHeight, childHeight);
+      }
+    }
+    return maxHeight;
   };
 
   // Position nodes recursively with grid layout for children
@@ -98,28 +118,55 @@ const buildTreeLayout = (elements) => {
     const children = childrenMap.get(element.id) || [];
     if (children.length === 0) return;
 
-    const { cols, rows } = getGridDimensions(children.length);
-    const gridWidth = cols * NODE_WIDTH + (cols - 1) * HORIZONTAL_GAP;
-    const startX = x + NODE_WIDTH / 2 - gridWidth / 2;
-    const startY = y + VERTICAL_SPACING;
+    const cols = Math.min(children.length, GRID_COLUMNS);
+    const numRows = Math.ceil(children.length / cols);
 
-    children.forEach((child, index) => {
-      const col = index % cols;
-      const row = Math.floor(index / cols);
-      const childX = startX + col * (NODE_WIDTH + HORIZONTAL_GAP);
-      const childY = startY + row * (NODE_HEIGHT + HORIZONTAL_GAP);
+    // Calculate column widths for proper horizontal spacing
+    const columnWidths = [];
+    for (let col = 0; col < cols; col++) {
+      let maxWidth = NODE_WIDTH;
+      for (let i = col; i < children.length; i += cols) {
+        const childWidth = getSubtreeWidth(children[i].id);
+        maxWidth = Math.max(maxWidth, childWidth);
+      }
+      columnWidths.push(maxWidth);
+    }
 
-      // Create edge from parent to child
-      edges.push({
-        id: `edge-${element.id}-${child.id}`,
-        source: element.id,
-        target: child.id,
-        type: 'smoothstep',
-        style: { stroke: '#94a3b8', strokeWidth: 1 },
-      });
+    const totalWidth = columnWidths.reduce((sum, w) => sum + w, 0) + (cols - 1) * HORIZONTAL_GAP;
+    const startX = x + NODE_WIDTH / 2 - totalWidth / 2;
 
-      positionNode(child, childX, childY, depth + 1);
-    });
+    // Track Y position per row, accounting for subtree heights
+    let currentY = y + VERTICAL_SPACING;
+
+    for (let row = 0; row < numRows; row++) {
+      let currentX = startX;
+
+      for (let col = 0; col < cols; col++) {
+        const childIndex = row * cols + col;
+        if (childIndex >= children.length) break;
+
+        const child = children[childIndex];
+
+        // Position child at center of its allocated column width
+        const childX = currentX + (columnWidths[col] - NODE_WIDTH) / 2;
+
+        // Create edge from parent to child
+        edges.push({
+          id: `edge-${element.id}-${child.id}`,
+          source: element.id,
+          target: child.id,
+          type: 'smoothstep',
+          style: { stroke: '#94a3b8', strokeWidth: 1 },
+        });
+
+        positionNode(child, childX, currentY, depth + 1);
+
+        currentX += columnWidths[col] + HORIZONTAL_GAP;
+      }
+
+      // Move to next row - offset by the max height of this row's subtrees
+      currentY += getRowHeight(children, cols, row) + VERTICAL_SPACING;
+    }
   };
 
   // Position all root elements
