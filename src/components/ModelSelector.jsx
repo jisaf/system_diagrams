@@ -12,6 +12,7 @@ const ModelSelector = () => {
   const {
     models,
     loading,
+    error,
     currentModelId,
     isConfigured,
     loadModel,
@@ -19,6 +20,7 @@ const ModelSelector = () => {
     saveAsModel,
     deleteModel,
     newModel,
+    fetchModels,
   } = useModels();
 
   const { metadata, exportModel, importModel, clearAll, setMetadata } = useStore();
@@ -165,7 +167,18 @@ const ModelSelector = () => {
 
               {/* Models List */}
               <div className="max-h-64 overflow-y-auto">
-                {models.length === 0 ? (
+                {error && (
+                  <div className="px-3 py-2 text-sm text-red-600 bg-red-50 border-b border-red-100">
+                    Error: {error}
+                    <button
+                      onClick={() => fetchModels()}
+                      className="ml-2 underline hover:no-underline"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                )}
+                {models.length === 0 && !error ? (
                   <div className="px-3 py-4 text-sm text-gray-500 text-center">
                     No saved models
                   </div>
