@@ -182,6 +182,7 @@ export const useModels = () => {
     loading,
     error,
     currentModelId,
+    setCurrentModelId,
     isConfigured: isSupabaseConfigured(),
     fetchModels,
     loadModel,

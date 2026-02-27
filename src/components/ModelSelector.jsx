@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
-import { Database, ChevronDown, Save, FilePlus, Trash2, FolderOpen, Loader2 } from 'lucide-react';
+import { Database, ChevronDown, Save, FilePlus, Trash2, FolderOpen, Loader2, RefreshCw, Check, AlertCircle } from 'lucide-react';
 import { useModels } from '../hooks/useModels';
+import { useAutoSave } from '../hooks/useAutoSave';
 import useStore from '../store';
 
 const ModelSelector = () => {
@@ -24,6 +25,9 @@ const ModelSelector = () => {
   } = useModels();
 
   const { metadata, exportModel, importModel, clearAll, setMetadata } = useStore();
+
+  // Auto-save functionality
+  const { autoSaveEnabled, toggleAutoSave, saveStatus } = useAutoSave(currentModelId, fetchModels);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -86,18 +90,23 @@ const ModelSelector = () => {
 
   const currentModel = models.find(m => m.id === currentModelId);
 
+  // Get status icon for auto-save
+  const getStatusIcon = () => {
+    if (loading) return <Loader2 className="w-4 h-4 animate-spin" />;
+    if (saveStatus === 'saving') return <RefreshCw className="w-4 h-4 animate-spin" />;
+    if (saveStatus === 'saved') return <Check className="w-4 h-4 text-green-300" />;
+    if (saveStatus === 'error') return <AlertCircle className="w-4 h-4 text-red-300" />;
+    return <Database className="w-4 h-4" />;
+  };
+
   return (
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-sm transition-colors"
-        title="Cloud models"
+        title={autoSaveEnabled && currentModelId ? 'Auto-save enabled' : 'Cloud models'}
       >
-        {loading ? (
-          <Loader2 className="w-4 h-4 animate-spin" />
-        ) : (
-          <Database className="w-4 h-4" />
-        )}
+        {getStatusIcon()}
         <span className="max-w-[120px] truncate">
           {currentModel ? currentModel.name : 'Models'}
         </span>
@@ -163,6 +172,24 @@ const ModelSelector = () => {
                     Save As...
                   </button>
                 )}
+                {/* Auto-save toggle */}
+                <div className="px-3 py-2 flex items-center justify-between">
+                  <span className="text-sm text-gray-700">Auto-save</span>
+                  <button
+                    onClick={() => toggleAutoSave(!autoSaveEnabled)}
+                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                      autoSaveEnabled ? 'bg-indigo-600' : 'bg-gray-300'
+                    } ${!currentModelId ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    disabled={!currentModelId}
+                    title={!currentModelId ? 'Save a model first to enable auto-save' : ''}
+                  >
+                    <span
+                      className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                        autoSaveEnabled ? 'translate-x-5' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
               </div>
 
               {/* Models List */}
