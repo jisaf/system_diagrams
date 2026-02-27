@@ -43,23 +43,29 @@ const buildTreeLayout = (elements) => {
     const children = childrenMap.get(elementId) || [];
     if (children.length === 0) return NODE_WIDTH;
 
-    // For grid layout, we need to calculate width per row and take the max
+    // For grid layout, find the widest row
     const cols = Math.min(children.length, GRID_COLUMNS);
+    const numRows = Math.ceil(children.length / cols);
 
-    // Calculate total width needed: sum of widths for each column
-    // Each column's width is the max subtree width of elements in that column
-    const columnWidths = [];
-    for (let col = 0; col < cols; col++) {
-      let maxWidth = NODE_WIDTH;
-      for (let i = col; i < children.length; i += cols) {
-        const childWidth = getSubtreeWidth(children[i].id);
-        maxWidth = Math.max(maxWidth, childWidth);
+    let maxRowWidth = NODE_WIDTH;
+
+    for (let row = 0; row < numRows; row++) {
+      let rowWidth = 0;
+      const colsInThisRow = Math.min(cols, children.length - row * cols);
+
+      for (let col = 0; col < colsInThisRow; col++) {
+        const childIndex = row * cols + col;
+        const childWidth = getSubtreeWidth(children[childIndex].id);
+        rowWidth += childWidth;
+        if (col < colsInThisRow - 1) {
+          rowWidth += HORIZONTAL_GAP;
+        }
       }
-      columnWidths.push(maxWidth);
+
+      maxRowWidth = Math.max(maxRowWidth, rowWidth);
     }
 
-    const totalWidth = columnWidths.reduce((sum, w) => sum + w, 0) + (cols - 1) * HORIZONTAL_GAP;
-    return Math.max(NODE_WIDTH, totalWidth);
+    return maxRowWidth;
   };
 
   // Calculate subtree height recursively
@@ -121,34 +127,33 @@ const buildTreeLayout = (elements) => {
     const cols = Math.min(children.length, GRID_COLUMNS);
     const numRows = Math.ceil(children.length / cols);
 
-    // Calculate column widths for proper horizontal spacing
-    const columnWidths = [];
-    for (let col = 0; col < cols; col++) {
-      let maxWidth = NODE_WIDTH;
-      for (let i = col; i < children.length; i += cols) {
-        const childWidth = getSubtreeWidth(children[i].id);
-        maxWidth = Math.max(maxWidth, childWidth);
-      }
-      columnWidths.push(maxWidth);
-    }
-
-    const totalWidth = columnWidths.reduce((sum, w) => sum + w, 0) + (cols - 1) * HORIZONTAL_GAP;
-    const startX = x + NODE_WIDTH / 2 - totalWidth / 2;
+    // Get the parent's subtree width (this determines total available space)
+    const parentSubtreeWidth = getSubtreeWidth(element.id);
+    const centerX = x + NODE_WIDTH / 2;
 
     // Track Y position per row, accounting for subtree heights
     let currentY = y + VERTICAL_SPACING;
 
     for (let row = 0; row < numRows; row++) {
-      let currentX = startX;
+      const colsInThisRow = Math.min(cols, children.length - row * cols);
 
-      for (let col = 0; col < cols; col++) {
+      // Calculate the width of this row based on actual subtree widths
+      const childWidths = [];
+      for (let col = 0; col < colsInThisRow; col++) {
         const childIndex = row * cols + col;
-        if (childIndex >= children.length) break;
+        childWidths.push(getSubtreeWidth(children[childIndex].id));
+      }
 
+      const rowWidth = childWidths.reduce((sum, w) => sum + w, 0) + (colsInThisRow - 1) * HORIZONTAL_GAP;
+      let currentX = centerX - rowWidth / 2;
+
+      for (let col = 0; col < colsInThisRow; col++) {
+        const childIndex = row * cols + col;
         const child = children[childIndex];
+        const childSubtreeWidth = childWidths[col];
 
-        // Position child at center of its allocated column width
-        const childX = currentX + (columnWidths[col] - NODE_WIDTH) / 2;
+        // Position child at center of its subtree allocation
+        const childX = currentX + (childSubtreeWidth - NODE_WIDTH) / 2;
 
         // Create edge from parent to child
         edges.push({
@@ -161,7 +166,7 @@ const buildTreeLayout = (elements) => {
 
         positionNode(child, childX, currentY, depth + 1);
 
-        currentX += columnWidths[col] + HORIZONTAL_GAP;
+        currentX += childSubtreeWidth + HORIZONTAL_GAP;
       }
 
       // Move to next row - offset by the max height of this row's subtrees
