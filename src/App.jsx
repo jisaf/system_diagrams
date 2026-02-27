@@ -282,18 +282,14 @@ function App() {
       const element = getAllElements().find((el) => el.id === node.id);
       if (!element) return;
 
-      // If it's a shadow, navigate to the target's parent context
+      // If it's a shadow, navigate INTO the target (show its children)
       if (element.type === 'shadow' && element.targetId) {
         const target = getAllElements().find((el) => el.id === element.targetId);
         if (target) {
-          // Navigate to where the target lives (its parent, or root if no parent)
-          const targetParentId = target.parentId || null;
-
-          // Use navigateTo if target has a parent, otherwise navigateToRoot
-          if (targetParentId) {
-            navigateTo(targetParentId);
-          } else {
-            navigateToRoot();
+          // Navigate into the target element to see its children
+          // Only if target can have children (system or container)
+          if (target.type === 'system' || target.type === 'container') {
+            navigateInto(target.id);
           }
           return;
         }
@@ -304,7 +300,7 @@ function App() {
         navigateInto(element.id);
       }
     },
-    [getAllElements, navigateInto, navigateTo, navigateToRoot]
+    [getAllElements, navigateInto]
   );
 
   // Handle edge click
