@@ -19,6 +19,7 @@ import Toolbar from './components/Toolbar';
 import PropertiesPanel from './components/PropertiesPanel';
 import Header from './components/Header';
 import { useLocalStorage } from './hooks/useLocalStorage';
+import { useBrowserHistory } from './hooks/useBrowserHistory';
 
 const nodeTypes = {
   c4Node: C4Node,
@@ -95,6 +96,9 @@ function App() {
 
   // Enable local storage auto-save
   useLocalStorage();
+
+  // Enable browser back/forward button navigation
+  useBrowserHistory();
 
   // Update nodes and edges when store changes
   useEffect(() => {
