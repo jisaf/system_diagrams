@@ -247,10 +247,10 @@ function App() {
         navigateToRoot();
       }
 
-      // Enter - drill into selected element if it has children
+      // Enter - drill into selected element (infinite nesting - can always drill in)
       if (event.key === 'Enter' && selectedElement) {
-        const hasChildren = useStore.getState().hasChildren;
-        if (hasChildren(selectedElement.id)) {
+        // Allow drilling into any element type except person and externalSystem
+        if (selectedElement.type !== 'person' && selectedElement.type !== 'externalSystem') {
           navigateInto(selectedElement.id);
         }
       }
@@ -287,19 +287,18 @@ function App() {
       const element = getAllElements().find((el) => el.id === node.id);
       if (!element) return;
 
-      const hasChildren = useStore.getState().hasChildren;
-
-      // If it's a shadow, navigate INTO the target (show its children)
+      // If it's a shadow, navigate INTO the target
       if (element.type === 'shadow' && element.targetId) {
         const target = getAllElements().find((el) => el.id === element.targetId);
-        if (target && hasChildren(target.id)) {
+        if (target && target.type !== 'person' && target.type !== 'externalSystem') {
           navigateInto(target.id);
           return;
         }
       }
 
-      // Navigate into any element that has children (infinite nesting support)
-      if (hasChildren(element.id)) {
+      // Navigate into any element (infinite nesting - can always drill in to add children)
+      // Except person and externalSystem which are leaf nodes
+      if (element.type !== 'person' && element.type !== 'externalSystem') {
         navigateInto(element.id);
       }
     },
