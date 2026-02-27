@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Download, Upload, FileJson, FileImage, FileCode, FileText, Share2, Check, AlertCircle, Eye, GitBranch, Table } from 'lucide-react';
+import { Download, Upload, FileJson, FileImage, FileCode, FileText, Share2, Check, AlertCircle, Eye, GitBranch, Table, BarChart3 } from 'lucide-react';
 import useStore from '../store';
 import Breadcrumb from './Breadcrumb';
 import { exportAsPNG, exportAsSVG, generatePlantUML, generateMermaid, generateMarkdown, exportAsHTML, exportAsDrawio, exportAsSpreadsheet, importFromSpreadsheet } from '../utils/exportUtils';
@@ -441,6 +441,18 @@ const Header = () => {
               >
                 <GitBranch className="w-4 h-4" />
                 Tree
+              </button>
+              <button
+                onClick={() => setViewMode('gantt')}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded text-sm transition-colors ${
+                  viewMode === 'gantt'
+                    ? 'bg-white shadow-sm text-gray-900'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+                title="Gantt view - see project timeline"
+              >
+                <BarChart3 className="w-4 h-4" />
+                Gantt
               </button>
             </div>
 
