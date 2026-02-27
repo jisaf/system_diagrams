@@ -243,13 +243,13 @@ const Header = () => {
               className="text-sm text-gray-900 font-medium px-2 py-1 border border-blue-500 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[200px]"
             />
           ) : (
-            <div
-              onDoubleClick={handleTitleDoubleClick}
-              className="text-sm text-gray-600 cursor-pointer hover:text-gray-900 hover:bg-gray-100 px-2 py-1 rounded transition-colors"
-              title="Double-click to edit title"
+            <button
+              onClick={handleTitleDoubleClick}
+              className="text-sm text-gray-600 cursor-text hover:text-gray-900 hover:bg-gray-100 px-2 py-1 rounded transition-colors border border-transparent hover:border-gray-300"
+              title="Click to edit model name"
             >
               {metadata.name}
-            </div>
+            </button>
           )}
         </div>
 
