@@ -90,6 +90,7 @@ function App() {
   const components = useStore((state) => state.components);
   const people = useStore((state) => state.people);
   const externalSystems = useStore((state) => state.externalSystems);
+  const shadows = useStore((state) => state.shadows);
   const getVisibleElements = useStore((state) => state.getVisibleElements);
 
   // Enable local storage auto-save
@@ -108,7 +109,7 @@ function App() {
       },
     }));
     setNodes(newNodes);
-  }, [systems, containers, components, people, externalSystems, currentParentId, getVisibleElements, setNodes]);
+  }, [systems, containers, components, people, externalSystems, shadows, currentParentId, getVisibleElements, setNodes]);
 
   useEffect(() => {
     const elements = getVisibleElements();
@@ -167,7 +168,7 @@ function App() {
       };
     });
     setEdges(newEdges);
-  }, [relationships, setEdges, getVisibleElements, systems, containers, components, people, externalSystems, currentParentId]);
+  }, [relationships, setEdges, getVisibleElements, systems, containers, components, people, externalSystems, shadows, currentParentId]);
 
   // Handle node drag
   const onNodeDragStop = useCallback(
