@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from 'react';
+import { useMemo } from 'react';
 import {
   ReactFlow,
   Background,
@@ -137,32 +137,12 @@ const buildTreeLayout = (elements) => {
 
 const TreeView = () => {
   const getAllElements = useStore((state) => state.getAllElements);
-  const setViewMode = useStore((state) => state.setViewMode);
-  const navigateTo = useStore((state) => state.navigateTo);
-  const navigateToRoot = useStore((state) => state.navigateToRoot);
   const elements = getAllElements().filter((el) => el.type !== 'shadow');
 
   const { nodes, edges } = useMemo(
     () => buildTreeLayout(elements),
     [elements]
   );
-
-  // Handle double-click on node - navigate to that element in edit mode
-  const handleNodeDoubleClick = useCallback((event, node) => {
-    event.stopPropagation();
-    const element = node.data;
-    if (!element) return;
-
-    // Navigate to the parent context where this element lives
-    const targetParentId = element.parentId || null;
-    if (targetParentId) {
-      navigateTo(targetParentId);
-    } else {
-      navigateToRoot();
-    }
-    // Switch to edit mode
-    setViewMode('edit');
-  }, [navigateTo, navigateToRoot, setViewMode]);
 
   return (
     <div className="flex-1 h-full">
@@ -174,13 +154,11 @@ const TreeView = () => {
         fitViewOptions={{ padding: 0.2 }}
         nodesDraggable={false}
         nodesConnectable={false}
-        elementsSelectable={true}
-        panOnDrag={[1, 2]} // Only pan with middle/right mouse button
+        elementsSelectable={false}
+        panOnDrag={true} // Allow panning with left mouse button
         zoomOnScroll
         zoomOnPinch
-        zoomOnDoubleClick={false} // Disable double-click zoom so we can use it for navigation
-        onNodeDoubleClick={handleNodeDoubleClick}
-        onNodeClick={handleNodeDoubleClick} // Also handle single click for easier navigation
+        zoomOnDoubleClick={false} // Disable double-click zoom so node double-click works
       >
         <Background color="#e2e8f0" gap={20} />
         <Controls showInteractive={false} />
