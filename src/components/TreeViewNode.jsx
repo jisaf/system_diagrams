@@ -116,8 +116,10 @@ const TreeViewNode = ({ data }) => {
         <button
           onClick={handleGoToElement}
           onMouseDown={(e) => e.stopPropagation()}
-          className="nodrag p-1 hover:bg-white/50 rounded transition-colors cursor-pointer"
+          onPointerDown={(e) => e.stopPropagation()}
+          className="nodrag nopan p-1 hover:bg-white/50 rounded transition-colors cursor-pointer z-10"
           title="Go to this element in edit mode"
+          style={{ pointerEvents: 'auto' }}
         >
           <ExternalLinkIcon className="w-3 h-3 text-gray-400 hover:text-blue-500" />
         </button>
