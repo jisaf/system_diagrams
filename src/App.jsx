@@ -409,7 +409,7 @@ function App() {
           )}
         </div>
 
-        {viewMode === 'edit' && <PropertiesPanel />}
+        {(viewMode === 'edit' || viewMode === 'gantt') && <PropertiesPanel />}
       </div>
     </div>
   );
