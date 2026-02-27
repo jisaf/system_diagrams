@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 import {
   ReactFlow,
   Background,
@@ -93,8 +93,6 @@ const buildTreeLayout = (elements) => {
         ...element,
         label: element.name,
       },
-      draggable: false,
-      selectable: false,
     });
 
     const children = childrenMap.get(element.id) || [];
@@ -137,11 +135,35 @@ const buildTreeLayout = (elements) => {
 
 const TreeView = () => {
   const getAllElements = useStore((state) => state.getAllElements);
+  const setViewMode = useStore((state) => state.setViewMode);
+  const navigateInto = useStore((state) => state.navigateInto);
+  const navigateTo = useStore((state) => state.navigateTo);
+  const navigateToRoot = useStore((state) => state.navigateToRoot);
+
   const elements = getAllElements().filter((el) => el.type !== 'shadow');
 
   const { nodes, edges } = useMemo(
     () => buildTreeLayout(elements),
     [elements]
+  );
+
+  // Handle double-click - same as edit view but navigates to element's context then switches to edit
+  const onNodeDoubleClick = useCallback(
+    (event, node) => {
+      event.stopPropagation();
+      const element = node.data;
+      if (!element) return;
+
+      // Navigate to the parent context where this element lives, then switch to edit mode
+      const targetParentId = element.parentId || null;
+      if (targetParentId) {
+        navigateTo(targetParentId);
+      } else {
+        navigateToRoot();
+      }
+      setViewMode('edit');
+    },
+    [navigateTo, navigateToRoot, setViewMode]
   );
 
   return (
@@ -150,18 +172,15 @@ const TreeView = () => {
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
+        onNodeDoubleClick={onNodeDoubleClick}
         fitView
         fitViewOptions={{ padding: 0.2 }}
         nodesDraggable={false}
         nodesConnectable={false}
-        elementsSelectable={false}
-        panOnDrag={true} // Allow panning with left mouse button
-        zoomOnScroll
-        zoomOnPinch
-        zoomOnDoubleClick={false} // Disable double-click zoom so node double-click works
+        className="bg-gray-50"
       >
         <Background color="#e2e8f0" gap={20} />
-        <Controls showInteractive={false} />
+        <Controls />
         <MiniMap
           nodeColor={(node) => {
             switch (node.data?.type) {

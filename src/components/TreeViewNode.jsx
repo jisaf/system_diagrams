@@ -79,11 +79,9 @@ const TreeViewNode = ({ data }) => {
     }
   };
 
+  // Handle click on the link button
   const handleGoToElement = (e) => {
-    if (e) {
-      e.stopPropagation();
-      e.preventDefault();
-    }
+    e.stopPropagation();
     // Navigate to the parent context where this element lives
     const targetParentId = data.parentId || null;
     if (targetParentId) {
@@ -96,18 +94,8 @@ const TreeViewNode = ({ data }) => {
     setViewMode('edit');
   };
 
-  // Handle double-click on the node itself
-  const handleDoubleClick = (e) => {
-    e.stopPropagation();
-    e.preventDefault();
-    handleGoToElement();
-  };
-
   return (
-    <div
-      className={`${getNodeStyle()} relative cursor-pointer`}
-      onDoubleClick={handleDoubleClick}
-    >
+    <div className={`${getNodeStyle()} relative`}>
       <Handle
         type="target"
         position={Position.Top}
@@ -128,11 +116,8 @@ const TreeViewNode = ({ data }) => {
         {/* Go to element button */}
         <button
           onClick={handleGoToElement}
-          onMouseDown={(e) => e.stopPropagation()}
-          onPointerDown={(e) => e.stopPropagation()}
-          className="nodrag nopan p-1 hover:bg-white/50 rounded transition-colors cursor-pointer z-10"
+          className="p-1 hover:bg-white/50 rounded transition-colors"
           title="Go to this element in edit mode"
-          style={{ pointerEvents: 'auto' }}
         >
           <ExternalLinkIcon className="w-3 h-3 text-gray-400 hover:text-blue-500" />
         </button>
