@@ -45,7 +45,7 @@ const C4Node = ({ data, selected }) => {
   }));
 
   const getNodeStyle = () => {
-    const baseStyle = 'px-4 py-3 rounded-lg border-2 min-w-[200px] shadow-lg transition-all';
+    const baseStyle = 'px-4 py-3 rounded-lg border-2 min-w-[200px] max-w-[300px] shadow-lg transition-all';
 
     switch (data.type) {
       case 'system':
@@ -111,16 +111,16 @@ const C4Node = ({ data, selected }) => {
           <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
             {getTypeLabel()}
           </div>
-          <div className="font-bold text-gray-900 mb-1">
+          <div className="font-bold text-gray-900 mb-1 break-words">
             {data.label || data.name || 'Unnamed'}
           </div>
           {data.technology && (
-            <div className="text-xs text-gray-600 italic mb-1">
+            <div className="text-xs text-gray-600 italic mb-1 break-words">
               [{data.technology}]
             </div>
           )}
           {data.description && (
-            <div className="text-xs text-gray-700 mt-2">
+            <div className="text-xs text-gray-700 mt-2 break-words">
               {data.description}
             </div>
           )}
