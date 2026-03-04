@@ -22,6 +22,7 @@ const PropertiesPanel = () => {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
+    whyItMatters: '',
     technology: '',
     tags: '',
     ownerPM: '',
@@ -50,6 +51,7 @@ const PropertiesPanel = () => {
         setFormData({
           name: selectedElement.name || '',
           description: selectedElement.description || '',
+          whyItMatters: selectedElement.whyItMatters || '',
           technology: selectedElement.technology || '',
           tags: Array.isArray(selectedElement.tags) ? selectedElement.tags.join(', ') : '',
           ownerPM: selectedElement.ownerPM || '',
@@ -62,6 +64,7 @@ const PropertiesPanel = () => {
         setFormData({
           name: 'Error loading element',
           description: '',
+          whyItMatters: '',
           technology: '',
           tags: '',
           ownerPM: '',
@@ -129,6 +132,7 @@ const PropertiesPanel = () => {
       const updates = {
         name: formData.name,
         description: formData.description,
+        whyItMatters: formData.whyItMatters,
         technology: formData.technology,
         tags: formData.tags.split(',').map((tag) => tag.trim()).filter(Boolean),
         ownerPM: formData.ownerPM,
@@ -591,9 +595,25 @@ const PropertiesPanel = () => {
                 value={formData.description}
                 onChange={(e) => handleInputChange('description', e.target.value)}
                 onBlur={handleSave}
-                rows={4}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 break-words"
                 placeholder="Describe the element's purpose and responsibilities"
+              />
+            </div>
+
+            {/* Why It Matters */}
+            <div>
+              <label htmlFor="whyItMatters" className="block text-xs font-semibold text-gray-600 uppercase mb-1">
+                Why It Matters
+              </label>
+              <textarea
+                id="whyItMatters"
+                value={formData.whyItMatters}
+                onChange={(e) => handleInputChange('whyItMatters', e.target.value)}
+                onBlur={handleSave}
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 break-words"
+                placeholder="Explain the business value or importance of this element"
               />
             </div>
 

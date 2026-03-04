@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
-import { Database, ChevronDown, Save, FilePlus, Trash2, FolderOpen, Loader2, RefreshCw, Check, AlertCircle } from 'lucide-react';
+import { Database, ChevronDown, Save, FilePlus, Trash2, FolderOpen, Loader2, RefreshCw, Check, AlertCircle, Radio } from 'lucide-react';
 import { useModels } from '../hooks/useModels';
 import { useAutoSave } from '../hooks/useAutoSave';
+import { useRealtimeSync } from '../hooks/useRealtimeSync';
 import useStore from '../store';
 
 const ModelSelector = () => {
@@ -26,8 +27,11 @@ const ModelSelector = () => {
 
   const { metadata, exportModel, importModel, clearAll, setMetadata } = useStore();
 
-  // Auto-save functionality
-  const { autoSaveEnabled, toggleAutoSave, saveStatus } = useAutoSave(currentModelId, fetchModels);
+  // Realtime sync - subscribe to changes from other clients
+  const { markAsSaved } = useRealtimeSync(currentModelId);
+
+  // Auto-save functionality - pass markAsSaved to notify realtime sync of our saves
+  const { autoSaveEnabled, toggleAutoSave, saveStatus } = useAutoSave(currentModelId, fetchModels, markAsSaved);
 
   // Close dropdown when clicking outside
   useEffect(() => {

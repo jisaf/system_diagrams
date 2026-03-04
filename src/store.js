@@ -54,12 +54,55 @@ const useStore = create((set, get) => ({
   // Validation warnings
   warnings: [],
 
+  // Flash state for realtime updates - Map of elementId -> { intensity, expiresAt }
+  flashingElements: new Map(),
+
   // Actions
   setMetadata: (metadata) => set({ metadata }),
 
   setCurrentLevel: (level) => set({ currentLevel: level }),
 
   setViewMode: (mode) => set({ viewMode: mode }),
+
+  // Flash elements for realtime updates
+  setFlashingElements: (elementIds, intensity = 1.0) => {
+    const state = get();
+    const newFlashing = new Map(state.flashingElements);
+    const duration = intensity >= 1.0 ? 1500 : intensity >= 0.5 ? 800 : 500;
+    const expiresAt = Date.now() + duration;
+
+    elementIds.forEach(id => {
+      newFlashing.set(id, { intensity, expiresAt });
+    });
+
+    set({ flashingElements: newFlashing });
+
+    // Auto-clear after max duration
+    setTimeout(() => {
+      get().clearExpiredFlashes();
+    }, duration + 50);
+  },
+
+  clearExpiredFlashes: () => {
+    const state = get();
+    const now = Date.now();
+    const newFlashing = new Map();
+
+    state.flashingElements.forEach((value, key) => {
+      if (value.expiresAt > now) {
+        newFlashing.set(key, value);
+      }
+    });
+
+    set({ flashingElements: newFlashing });
+  },
+
+  getFlashIntensity: (elementId) => {
+    const state = get();
+    const flash = state.flashingElements.get(elementId);
+    if (!flash || flash.expiresAt <= Date.now()) return 0;
+    return flash.intensity;
+  },
 
   // Navigate into an element (drill down)
   navigateInto: (elementId) => {

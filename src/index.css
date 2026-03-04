@@ -22,3 +22,31 @@ body {
 
 /* Hide React Flow attribution in production (optional - uncomment if desired) */
 /* .react-flow__attribution { display: none; } */
+
+/* Flash animation for realtime updates */
+@keyframes flash-update-full {
+  0% { box-shadow: 0 0 0 4px rgba(250, 204, 21, 0.9); }
+  100% { box-shadow: 0 0 0 0 rgba(250, 204, 21, 0); }
+}
+
+@keyframes flash-update-medium {
+  0% { box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.5); }
+  100% { box-shadow: 0 0 0 0 rgba(250, 204, 21, 0); }
+}
+
+@keyframes flash-update-faint {
+  0% { box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.3); }
+  100% { box-shadow: 0 0 0 0 rgba(250, 204, 21, 0); }
+}
+
+.flash-full {
+  animation: flash-update-full 1.5s ease-out forwards;
+}
+
+.flash-medium {
+  animation: flash-update-medium 0.8s ease-out forwards;
+}
+
+.flash-faint {
+  animation: flash-update-faint 0.5s ease-out forwards;
+}

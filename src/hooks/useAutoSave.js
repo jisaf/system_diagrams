@@ -5,7 +5,7 @@ import useStore from '../store';
 // Debounce delay in milliseconds
 const DEBOUNCE_DELAY = 2000;
 
-export const useAutoSave = (currentModelId, onSaveComplete) => {
+export const useAutoSave = (currentModelId, onSaveComplete, onSaveSuccess) => {
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(() => {
     // Load from localStorage
     const saved = localStorage.getItem('c4-autosave-enabled');
@@ -49,12 +49,13 @@ export const useAutoSave = (currentModelId, onSaveComplete) => {
     setSaveStatus('saving');
 
     try {
+      const updatedAt = new Date().toISOString();
       const { error: updateError } = await supabase
         .from('models')
         .update({
           name: metadata.name,
           data: modelData,
-          updated_at: new Date().toISOString(),
+          updated_at: updatedAt,
         })
         .eq('id', currentModelId);
 
@@ -63,6 +64,7 @@ export const useAutoSave = (currentModelId, onSaveComplete) => {
       lastSaveDataRef.current = dataString;
       setSaveStatus('saved');
       onSaveComplete?.();
+      onSaveSuccess?.(modelData, updatedAt); // Notify realtime sync
 
       // Reset status after a delay
       setTimeout(() => setSaveStatus('idle'), 2000);
@@ -71,7 +73,7 @@ export const useAutoSave = (currentModelId, onSaveComplete) => {
       setSaveStatus('error');
       setTimeout(() => setSaveStatus('idle'), 3000);
     }
-  }, [currentModelId, exportModel, metadata.name, onSaveComplete]);
+  }, [currentModelId, exportModel, metadata.name, onSaveComplete, onSaveSuccess]);
 
   // Watch for data changes and trigger debounced save
   useEffect(() => {

@@ -31,7 +31,17 @@ const getInitials = (name) => {
 
 const C4Node = ({ data, selected }) => {
   const getChildCount = useStore((state) => state.getChildCount);
+  const getFlashIntensity = useStore((state) => state.getFlashIntensity);
   const childCount = getChildCount(data.id);
+  const flashIntensity = getFlashIntensity(data.id);
+
+  // Determine flash class based on intensity
+  const getFlashClass = () => {
+    if (flashIntensity >= 0.8) return 'flash-full';
+    if (flashIntensity >= 0.4) return 'flash-medium';
+    if (flashIntensity > 0) return 'flash-faint';
+    return '';
+  };
 
   // Get owner initials and colors
   const ownerBadges = [
@@ -102,7 +112,7 @@ const C4Node = ({ data, selected }) => {
   const handleStyle = "!w-4 !h-4 !bg-slate-400 hover:!bg-blue-500 !border-2 !border-white transition-colors duration-150 cursor-crosshair";
 
   return (
-    <div className={`${getNodeStyle()} ${selected ? 'ring-4 ring-blue-400' : ''} relative`}>
+    <div className={`${getNodeStyle()} ${selected ? 'ring-4 ring-blue-400' : ''} ${getFlashClass()} relative`}>
       <Handle type="target" position={Position.Top} id="top" className={handleStyle} />
 
       <div className="flex items-start gap-2">
@@ -115,13 +125,18 @@ const C4Node = ({ data, selected }) => {
             {data.label || data.name || 'Unnamed'}
           </div>
           {data.technology && (
-            <div className="text-xs text-gray-600 italic mb-1 break-words">
+            <div className="text-xs text-gray-600 italic mb-1 break-words whitespace-pre-wrap">
               [{data.technology}]
             </div>
           )}
           {data.description && (
-            <div className="text-xs text-gray-700 mt-2 break-words">
+            <div className="text-xs text-gray-700 mt-2 break-words whitespace-pre-wrap">
               {data.description}
+            </div>
+          )}
+          {data.whyItMatters && (
+            <div className="text-xs text-gray-500 mt-1 break-words whitespace-pre-wrap italic">
+              {data.whyItMatters}
             </div>
           )}
         </div>
