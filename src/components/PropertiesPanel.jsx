@@ -15,6 +15,8 @@ const PropertiesPanel = () => {
     deleteRelationship,
     getAllElements,
     getElementPath,
+    getElementById,
+    moveElement,
   } = useStore();
 
   const [formData, setFormData] = useState({
@@ -37,6 +39,10 @@ const PropertiesPanel = () => {
   const [targetSearch, setTargetSearch] = useState('');
   const [showTargetPicker, setShowTargetPicker] = useState(false);
   const [shadowTargetId, setShadowTargetId] = useState('');
+
+  // Parent picker state
+  const [parentSearch, setParentSearch] = useState('');
+  const [showParentPicker, setShowParentPicker] = useState(false);
 
   useEffect(() => {
     if (selectedElement && selectedElement.id) {
@@ -95,8 +101,11 @@ const PropertiesPanel = () => {
   }, [selectedEdge?.id]); // Only reset form when edge ID changes, not when edge data changes
 
   useEffect(() => {
-    const handleClickOutside = () => setShowTargetPicker(false);
-    if (showTargetPicker) {
+    const handleClickOutside = () => {
+      setShowTargetPicker(false);
+      setShowParentPicker(false);
+    };
+    if (showTargetPicker || showParentPicker) {
       const timer = setTimeout(() => {
         document.addEventListener('click', handleClickOutside);
       }, 100);
@@ -105,7 +114,7 @@ const PropertiesPanel = () => {
         document.removeEventListener('click', handleClickOutside);
       };
     }
-  }, [showTargetPicker]);
+  }, [showTargetPicker, showParentPicker]);
 
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -339,6 +348,117 @@ const PropertiesPanel = () => {
             {selectedElement.type || 'Unknown'}
           </div>
         </div>
+
+        {/* Parent Picker - for non-shadow, non-person, non-externalSystem types */}
+        {selectedElement.type !== 'shadow' && selectedElement.type !== 'person' && selectedElement.type !== 'externalSystem' && (
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
+              Parent
+            </label>
+
+            {/* Current parent display */}
+            <div className="mb-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded text-sm">
+              {selectedElement.parentId ? (
+                <>
+                  <div className="font-medium text-gray-900">
+                    {getElementById(selectedElement.parentId)?.name || 'Unknown'}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {getElementPath(selectedElement.parentId)}
+                  </div>
+                </>
+              ) : (
+                <div className="text-gray-500 italic">Root (no parent)</div>
+              )}
+            </div>
+
+            {/* Search input */}
+            <div className="relative">
+              <input
+                type="text"
+                value={parentSearch}
+                onChange={(e) => {
+                  setParentSearch(e.target.value);
+                  setShowParentPicker(true);
+                }}
+                onFocus={() => setShowParentPicker(true)}
+                placeholder="Move to new parent..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+
+              {/* Dropdown */}
+              {showParentPicker && (() => {
+                // Get valid parent candidates
+                const allElements = getAllElements().filter(el => el.type !== 'shadow');
+
+                // Filter out: self, descendants, person, externalSystem
+                const isDescendant = (ancestorId, descendantId) => {
+                  let current = getElementById(descendantId);
+                  while (current) {
+                    if (current.parentId === ancestorId) return true;
+                    current = current.parentId ? getElementById(current.parentId) : null;
+                  }
+                  return false;
+                };
+
+                const validParents = allElements.filter(el => {
+                  if (el.id === selectedElement.id) return false; // Can't be own parent
+                  if (el.type === 'person' || el.type === 'externalSystem') return false; // Can't parent under these
+                  if (isDescendant(selectedElement.id, el.id)) return false; // Can't parent under descendant
+                  return true;
+                });
+
+                // Filter by search term
+                const filteredParents = parentSearch
+                  ? validParents.filter(el => {
+                      const path = getElementPath(el.id).toLowerCase();
+                      return path.includes(parentSearch.toLowerCase());
+                    })
+                  : validParents;
+
+                return (
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                    {/* Root option */}
+                    <div
+                      onClick={() => {
+                        moveElement(selectedElement.id, null);
+                        setParentSearch('');
+                        setShowParentPicker(false);
+                      }}
+                      className={`px-3 py-2 cursor-pointer hover:bg-gray-100 ${
+                        !selectedElement.parentId ? 'bg-blue-50' : ''
+                      }`}
+                    >
+                      <div className="text-sm font-medium text-gray-700">Root (no parent)</div>
+                      <div className="text-xs text-gray-500">Move to top level (becomes System)</div>
+                    </div>
+
+                    {filteredParents.length === 0 && parentSearch ? (
+                      <div className="px-3 py-2 text-sm text-gray-500">No matching elements</div>
+                    ) : (
+                      filteredParents.slice(0, 20).map((el) => (
+                        <div
+                          key={el.id}
+                          onClick={() => {
+                            moveElement(selectedElement.id, el.id);
+                            setParentSearch('');
+                            setShowParentPicker(false);
+                          }}
+                          className={`px-3 py-2 cursor-pointer hover:bg-gray-100 ${
+                            el.id === selectedElement.parentId ? 'bg-blue-50' : ''
+                          }`}
+                        >
+                          <div className="text-sm font-medium">{el.name || el.id}</div>
+                          <div className="text-xs text-gray-500">{getElementPath(el.id)}</div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+        )}
 
         {/* Shadow Target Picker - only for shadow type */}
         {selectedElement.type === 'shadow' && (

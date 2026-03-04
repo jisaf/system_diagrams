@@ -258,6 +258,119 @@ const useStore = create((set, get) => ({
     });
   },
 
+  // Move element to a new parent (with type remapping)
+  moveElement: (elementId, newParentId) => {
+    const state = get();
+    const element = state.getElementById(elementId);
+    if (!element) return;
+
+    // Prevent moving to self
+    if (elementId === newParentId) return;
+
+    // Prevent moving to a descendant (would create cycle)
+    const isDescendant = (ancestorId, descendantId) => {
+      let current = state.getElementById(descendantId);
+      while (current) {
+        if (current.parentId === ancestorId) return true;
+        current = current.parentId ? state.getElementById(current.parentId) : null;
+      }
+      return false;
+    };
+    if (newParentId && isDescendant(elementId, newParentId)) return;
+
+    // Determine new type based on parent
+    const getNewType = (currentType, parentId) => {
+      // Special types don't change
+      if (currentType === 'person' || currentType === 'externalSystem' || currentType === 'shadow') {
+        return currentType;
+      }
+      if (parentId === null) return 'system';
+      const parent = state.getElementById(parentId);
+      if (!parent) return 'system';
+      if (parent.type === 'system') return 'container';
+      return 'component'; // container or component parent → component
+    };
+
+    // Collect all descendants recursively
+    const collectDescendants = (id) => {
+      const children = state.getAllElements().filter(el => el.parentId === id);
+      return children.flatMap(c => [c, ...collectDescendants(c.id)]);
+    };
+
+    const descendants = collectDescendants(elementId);
+    const oldType = element.type;
+    const newType = getNewType(oldType, newParentId);
+
+    // Build updates for the element and all descendants
+    const updates = new Map();
+
+    // Update the moved element
+    updates.set(elementId, {
+      oldType,
+      newType,
+      changes: { parentId: newParentId || null, type: newType }
+    });
+
+    // Update descendants - their types shift based on their depth change
+    const processDescendant = (desc, parentNewType) => {
+      const descNewType = getNewType(desc.type, desc.parentId);
+      // Recalculate based on new parent type
+      let finalType = desc.type;
+      if (desc.type !== 'person' && desc.type !== 'externalSystem' && desc.type !== 'shadow') {
+        if (parentNewType === 'system') finalType = 'container';
+        else finalType = 'component';
+      }
+      updates.set(desc.id, {
+        oldType: desc.type,
+        newType: finalType,
+        changes: { type: finalType }
+      });
+      return finalType;
+    };
+
+    // Process immediate children of moved element
+    const immediateChildren = descendants.filter(d => d.parentId === elementId);
+    immediateChildren.forEach(child => {
+      const childNewType = processDescendant(child, newType);
+      // Process their children recursively
+      const processChildDescendants = (parentId, parentType) => {
+        const children = descendants.filter(d => d.parentId === parentId);
+        children.forEach(c => {
+          const cNewType = processDescendant(c, parentType);
+          processChildDescendants(c.id, cNewType);
+        });
+      };
+      processChildDescendants(child.id, childNewType);
+    });
+
+    // Apply all updates
+    set((state) => {
+      const newState = { ...state };
+
+      updates.forEach((update, id) => {
+        const { oldType, newType, changes } = update;
+        const oldProp = getPropertyName(oldType);
+        const newProp = getPropertyName(newType);
+
+        if (oldType === newType) {
+          // Same type - just update in place
+          newState[oldProp] = newState[oldProp].map(el =>
+            el.id === id ? { ...el, ...changes } : el
+          );
+        } else {
+          // Different type - remove from old array, add to new array
+          const element = newState[oldProp].find(el => el.id === id);
+          if (element) {
+            newState[oldProp] = newState[oldProp].filter(el => el.id !== id);
+            newState[newProp] = [...newState[newProp], { ...element, ...changes }];
+          }
+        }
+      });
+
+      return newState;
+    });
+  },
+
   // Delete element
   deleteElement: (type, id) => {
     const state = get();
