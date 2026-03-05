@@ -34,6 +34,57 @@ CREATE POLICY "Allow anonymous access" ON models
 
 -- Create index for faster queries
 CREATE INDEX models_updated_at_idx ON models(updated_at DESC);
+
+-- Enable Realtime for live updates
+ALTER PUBLICATION supabase_realtime ADD TABLE models;
+```
+
+## 2b. Add Version History (Optional but Recommended)
+
+Run this to enable rollback functionality:
+
+```sql
+-- Create model_versions table for rollback support
+CREATE TABLE model_versions (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  model_id UUID NOT NULL REFERENCES models(id) ON DELETE CASCADE,
+  data JSONB NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  saved_by TEXT DEFAULT 'anonymous'
+);
+
+-- Enable Row Level Security
+ALTER TABLE model_versions ENABLE ROW LEVEL SECURITY;
+
+-- Create policy to allow all operations (anonymous access)
+CREATE POLICY "Allow anonymous access" ON model_versions
+  FOR ALL
+  USING (true)
+  WITH CHECK (true);
+
+-- Create index for faster queries
+CREATE INDEX model_versions_model_id_idx ON model_versions(model_id, created_at DESC);
+
+-- Keep only last 50 versions per model (optional cleanup function)
+CREATE OR REPLACE FUNCTION cleanup_old_versions()
+RETURNS TRIGGER AS $$
+BEGIN
+  DELETE FROM model_versions
+  WHERE model_id = NEW.model_id
+  AND id NOT IN (
+    SELECT id FROM model_versions
+    WHERE model_id = NEW.model_id
+    ORDER BY created_at DESC
+    LIMIT 50
+  );
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER cleanup_versions_trigger
+AFTER INSERT ON model_versions
+FOR EACH ROW
+EXECUTE FUNCTION cleanup_old_versions();
 ```
 
 ## 3. Get Your API Keys

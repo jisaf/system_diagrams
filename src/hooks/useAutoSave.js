@@ -61,6 +61,20 @@ export const useAutoSave = (currentModelId, onSaveComplete, onSaveSuccess) => {
 
       if (updateError) throw updateError;
 
+      // Save version for rollback (fire and forget - don't block on this)
+      supabase
+        .from('model_versions')
+        .insert({
+          model_id: currentModelId,
+          data: modelData,
+        })
+        .then(({ error }) => {
+          if (error) {
+            // Table might not exist yet - that's okay, just log it
+            console.log('[AutoSave] Version history not available:', error.message);
+          }
+        });
+
       lastSaveDataRef.current = dataString;
       setSaveStatus('saved');
       onSaveComplete?.();

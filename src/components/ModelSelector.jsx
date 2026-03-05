@@ -1,13 +1,15 @@
 import { useState, useRef, useEffect } from 'react';
-import { Database, ChevronDown, Save, FilePlus, Trash2, FolderOpen, Loader2, RefreshCw, Check, AlertCircle, Radio } from 'lucide-react';
+import { Database, ChevronDown, Save, FilePlus, Trash2, FolderOpen, Loader2, RefreshCw, Check, AlertCircle, History } from 'lucide-react';
 import { useModels } from '../hooks/useModels';
 import { useAutoSave } from '../hooks/useAutoSave';
 import { useRealtimeSync } from '../hooks/useRealtimeSync';
+import { useVersionHistory } from '../hooks/useVersionHistory';
 import useStore from '../store';
 
 const ModelSelector = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [showSaveAs, setShowSaveAs] = useState(false);
+  const [showVersions, setShowVersions] = useState(false);
   const [newName, setNewName] = useState('');
   const dropdownRef = useRef(null);
 
@@ -33,17 +35,28 @@ const ModelSelector = () => {
   // Auto-save functionality - pass markAsSaved to notify realtime sync of our saves
   const { autoSaveEnabled, toggleAutoSave, saveStatus } = useAutoSave(currentModelId, fetchModels, markAsSaved);
 
+  // Version history for rollbacks
+  const { versions, loading: versionsLoading, error: versionsError, fetchVersions, restoreVersion } = useVersionHistory(currentModelId);
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsOpen(false);
         setShowSaveAs(false);
+        setShowVersions(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Fetch versions when showing version history
+  useEffect(() => {
+    if (showVersions && currentModelId) {
+      fetchVersions();
+    }
+  }, [showVersions, currentModelId, fetchVersions]);
 
   if (!isConfigured) {
     return null; // Don't show if Supabase not configured
@@ -194,49 +207,121 @@ const ModelSelector = () => {
                     />
                   </button>
                 </div>
+                {/* Version History button */}
+                {currentModelId && (
+                  <button
+                    onClick={() => setShowVersions(!showVersions)}
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded flex items-center gap-2"
+                  >
+                    <History className="w-4 h-4" />
+                    Version History
+                  </button>
+                )}
               </div>
 
-              {/* Models List */}
-              <div className="max-h-64 overflow-y-auto">
-                {error && (
-                  <div className="px-3 py-2 text-sm text-red-600 bg-red-50 border-b border-red-100">
-                    Error: {error}
+              {/* Version History Panel */}
+              {showVersions ? (
+                <div className="max-h-64 overflow-y-auto">
+                  <div className="px-3 py-2 border-b border-gray-100 flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-700">Version History</span>
                     <button
-                      onClick={() => fetchModels()}
-                      className="ml-2 underline hover:no-underline"
+                      onClick={() => setShowVersions(false)}
+                      className="text-xs text-gray-500 hover:text-gray-700"
                     >
-                      Retry
+                      ← Back
                     </button>
                   </div>
-                )}
-                {models.length === 0 && !error ? (
-                  <div className="px-3 py-4 text-sm text-gray-500 text-center">
-                    No saved models
-                  </div>
-                ) : (
-                  models.map((model) => (
+                  {versionsLoading && (
+                    <div className="px-3 py-4 text-sm text-gray-500 text-center flex items-center justify-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Loading versions...
+                    </div>
+                  )}
+                  {versionsError && (
+                    <div className="px-3 py-2 text-sm text-red-600 bg-red-50">
+                      {versionsError}
+                    </div>
+                  )}
+                  {!versionsLoading && !versionsError && versions.length === 0 && (
+                    <div className="px-3 py-4 text-sm text-gray-500 text-center">
+                      No version history yet
+                    </div>
+                  )}
+                  {versions.map((version, index) => (
                     <div
-                      key={model.id}
-                      onClick={() => handleLoad(model.id)}
-                      className={`flex items-center justify-between px-3 py-2 text-sm hover:bg-gray-100 cursor-pointer ${
-                        model.id === currentModelId ? 'bg-indigo-50' : ''
-                      }`}
+                      key={version.id}
+                      className="flex items-center justify-between px-3 py-2 text-sm hover:bg-gray-100"
                     >
-                      <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <FolderOpen className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                        <span className="truncate">{model.name}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-gray-700">
+                          {index === 0 ? 'Current' : `Version ${versions.length - index}`}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {new Date(version.created_at).toLocaleString()}
+                        </div>
                       </div>
+                      {index > 0 && (
+                        <button
+                          onClick={async () => {
+                            if (window.confirm('Restore this version? Current changes will be replaced.')) {
+                              const success = await restoreVersion(version.id);
+                              if (success) {
+                                setShowVersions(false);
+                                setIsOpen(false);
+                              }
+                            }
+                          }}
+                          className="px-2 py-1 text-xs bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200"
+                        >
+                          Restore
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                /* Models List */
+                <div className="max-h-64 overflow-y-auto">
+                  {error && (
+                    <div className="px-3 py-2 text-sm text-red-600 bg-red-50 border-b border-red-100">
+                      Error: {error}
                       <button
-                        onClick={(e) => handleDelete(e, model.id)}
-                        className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
-                        title="Delete model"
+                        onClick={() => fetchModels()}
+                        className="ml-2 underline hover:no-underline"
                       >
-                        <Trash2 className="w-3 h-3" />
+                        Retry
                       </button>
                     </div>
-                  ))
-                )}
-              </div>
+                  )}
+                  {models.length === 0 && !error ? (
+                    <div className="px-3 py-4 text-sm text-gray-500 text-center">
+                      No saved models
+                    </div>
+                  ) : (
+                    models.map((model) => (
+                      <div
+                        key={model.id}
+                        onClick={() => handleLoad(model.id)}
+                        className={`flex items-center justify-between px-3 py-2 text-sm hover:bg-gray-100 cursor-pointer ${
+                          model.id === currentModelId ? 'bg-indigo-50' : ''
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <FolderOpen className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                          <span className="truncate">{model.name}</span>
+                        </div>
+                        <button
+                          onClick={(e) => handleDelete(e, model.id)}
+                          className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
+                          title="Delete model"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
             </>
           )}
         </div>
