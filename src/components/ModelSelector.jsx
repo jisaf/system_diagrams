@@ -1,9 +1,10 @@
-import { useState, useRef, useEffect } from 'react';
-import { Database, ChevronDown, Save, FilePlus, Trash2, FolderOpen, Loader2, RefreshCw, Check, AlertCircle, History } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { Database, ChevronDown, Save, FilePlus, Trash2, FolderOpen, Loader2, RefreshCw, Check, AlertCircle, History, Lock } from 'lucide-react';
 import { useModels } from '../hooks/useModels';
 import { useAutoSave } from '../hooks/useAutoSave';
 import { useRealtimeSync } from '../hooks/useRealtimeSync';
 import { useVersionHistory } from '../hooks/useVersionHistory';
+import PinModal from './PinModal';
 import useStore from '../store';
 
 const ModelSelector = () => {
@@ -11,6 +12,9 @@ const ModelSelector = () => {
   const [showSaveAs, setShowSaveAs] = useState(false);
   const [showVersions, setShowVersions] = useState(false);
   const [newName, setNewName] = useState('');
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [pinAction, setPinAction] = useState(null); // 'save' | 'saveAs' | 'autoSave'
+  const [isPinVerified, setIsPinVerified] = useState(false);
   const dropdownRef = useRef(null);
 
   const {
@@ -62,15 +66,61 @@ const ModelSelector = () => {
     return null; // Don't show if Supabase not configured
   }
 
-  const handleSave = async () => {
+  // Request PIN verification for an action
+  const requestPinForAction = (action) => {
+    if (isPinVerified) {
+      // Already verified this session, proceed directly
+      executeAction(action);
+    } else {
+      setPinAction(action);
+      setShowPinModal(true);
+    }
+  };
+
+  // Execute action after PIN verification
+  const executeAction = async (action) => {
+    switch (action) {
+      case 'save':
+        await performSave();
+        break;
+      case 'saveAs':
+        setShowSaveAs(true);
+        setNewName(metadata.name);
+        break;
+      case 'autoSave':
+        toggleAutoSave(true);
+        break;
+    }
+  };
+
+  // Handle PIN success
+  const handlePinSuccess = () => {
+    setIsPinVerified(true);
+    if (pinAction) {
+      executeAction(pinAction);
+    }
+    setPinAction(null);
+  };
+
+  // Actual save operation
+  const performSave = async () => {
     const modelData = exportModel();
     if (currentModelId) {
       await saveModel(metadata.name, modelData);
     } else {
       setShowSaveAs(true);
       setNewName(metadata.name);
+      return; // Don't close - show save as form
     }
     setIsOpen(false);
+  };
+
+  const handleSave = () => {
+    if (currentModelId) {
+      requestPinForAction('save');
+    } else {
+      requestPinForAction('saveAs');
+    }
   };
 
   const handleSaveAs = async () => {
@@ -81,6 +131,16 @@ const ModelSelector = () => {
     await saveAsModel(newName.trim(), { ...modelData, metadata: { ...modelData.metadata, name: newName.trim() } });
     setShowSaveAs(false);
     setNewName('');
+  };
+
+  const handleAutoSaveToggle = () => {
+    if (autoSaveEnabled) {
+      // Turning off doesn't require PIN
+      toggleAutoSave(false);
+    } else {
+      // Turning on requires PIN
+      requestPinForAction('autoSave');
+    }
   };
 
   const handleLoad = async (id) => {
@@ -191,14 +251,17 @@ const ModelSelector = () => {
                 )}
                 {/* Auto-save toggle */}
                 <div className="px-3 py-2 flex items-center justify-between">
-                  <span className="text-sm text-gray-700">Auto-save</span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm text-gray-700">Auto-save</span>
+                    {!isPinVerified && <Lock className="w-3 h-3 text-gray-400" />}
+                  </div>
                   <button
-                    onClick={() => toggleAutoSave(!autoSaveEnabled)}
+                    onClick={handleAutoSaveToggle}
                     className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
                       autoSaveEnabled ? 'bg-indigo-600' : 'bg-gray-300'
                     } ${!currentModelId ? 'opacity-50 cursor-not-allowed' : ''}`}
                     disabled={!currentModelId}
-                    title={!currentModelId ? 'Save a model first to enable auto-save' : ''}
+                    title={!currentModelId ? 'Save a model first to enable auto-save' : (isPinVerified ? '' : 'PIN required')}
                   >
                     <span
                       className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
@@ -326,6 +389,20 @@ const ModelSelector = () => {
           )}
         </div>
       )}
+
+      <PinModal
+        isOpen={showPinModal}
+        onClose={() => {
+          setShowPinModal(false);
+          setPinAction(null);
+        }}
+        onSuccess={handlePinSuccess}
+        title={
+          pinAction === 'autoSave'
+            ? 'Enter PIN to enable auto-save'
+            : 'Enter PIN to save'
+        }
+      />
     </div>
   );
 };

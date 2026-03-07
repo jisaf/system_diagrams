@@ -6,11 +6,8 @@ import useStore from '../store';
 const DEBOUNCE_DELAY = 2000;
 
 export const useAutoSave = (currentModelId, onSaveComplete, onSaveSuccess) => {
-  const [autoSaveEnabled, setAutoSaveEnabled] = useState(() => {
-    // Load from localStorage
-    const saved = localStorage.getItem('c4-autosave-enabled');
-    return saved === 'true';
-  });
+  // Auto-save defaults to OFF - user must enter PIN to enable
+  const [autoSaveEnabled, setAutoSaveEnabled] = useState(false);
   const [saveStatus, setSaveStatus] = useState('idle'); // 'idle' | 'saving' | 'saved' | 'error'
   const debounceRef = useRef(null);
   const lastSaveDataRef = useRef(null);
@@ -26,10 +23,9 @@ export const useAutoSave = (currentModelId, onSaveComplete, onSaveSuccess) => {
   const metadata = useStore((state) => state.metadata);
   const exportModel = useStore((state) => state.exportModel);
 
-  // Toggle auto-save and persist to localStorage
+  // Toggle auto-save (no localStorage persistence - requires PIN each session)
   const toggleAutoSave = useCallback((enabled) => {
     setAutoSaveEnabled(enabled);
-    localStorage.setItem('c4-autosave-enabled', enabled ? 'true' : 'false');
   }, []);
 
   // Perform the actual save
